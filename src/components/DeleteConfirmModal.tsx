@@ -1,21 +1,15 @@
 import { Component, Show, createEffect, onCleanup } from 'solid-js';
-import { ExpenseCategory } from '../types';
 import {
   expenseToDelete,
   cancelDeleteExpense,
   confirmDeleteExpense,
   formatRupiah,
-  CATEGORY_CONFIG,
 } from '../stores/expenseStore';
+import { getCategoryConfig } from '../stores/categoryStore';
+import { CategoryIcon } from './CategoryIcon';
 import {
   Trash2,
   X,
-  Utensils,
-  Car,
-  ShoppingBag,
-  Receipt,
-  Film,
-  MoreHorizontal,
   Calendar,
 } from 'lucide-solid';
 
@@ -34,28 +28,10 @@ export const DeleteConfirmModal: Component = () => {
     onCleanup(() => window.removeEventListener('keydown', handleKeyDown));
   });
 
-  const renderIcon = (category: ExpenseCategory) => {
-    const config = CATEGORY_CONFIG[category] || CATEGORY_CONFIG.Lainnya;
-    switch (category) {
-      case 'Makanan':
-        return <Utensils class="w-4 h-4" style={{ color: config.color }} />;
-      case 'Transport':
-        return <Car class="w-4 h-4" style={{ color: config.color }} />;
-      case 'Belanja':
-        return <ShoppingBag class="w-4 h-4" style={{ color: config.color }} />;
-      case 'Tagihan':
-        return <Receipt class="w-4 h-4" style={{ color: config.color }} />;
-      case 'Hiburan':
-        return <Film class="w-4 h-4" style={{ color: config.color }} />;
-      default:
-        return <MoreHorizontal class="w-4 h-4" style={{ color: config.color }} />;
-    }
-  };
-
   return (
     <Show when={expenseToDelete()}>
       {(expense) => {
-        const config = CATEGORY_CONFIG[expense().category] || CATEGORY_CONFIG.Lainnya;
+        const config = () => getCategoryConfig(expense().category);
 
         return (
           <div
@@ -98,9 +74,13 @@ export const DeleteConfirmModal: Component = () => {
                   <div class="flex items-center gap-2">
                     <div
                       class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                      style={{ 'background-color': config.softColor }}
+                      style={{ 'background-color': config().softColor }}
                     >
-                      {renderIcon(expense().category)}
+                      <CategoryIcon
+                        name={config().icon}
+                        class="w-4 h-4"
+                        style={{ color: config().color }}
+                      />
                     </div>
                     <span class="text-xs font-bold text-warm-ink">
                       {expense().category}

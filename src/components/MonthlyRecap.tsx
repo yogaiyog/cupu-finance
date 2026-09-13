@@ -9,6 +9,8 @@ import {
 } from '../stores/expenseStore';
 import { ExpenseList } from './ExpenseList';
 import { settings } from '../stores/settingsStore';
+import { getCategoryConfig } from '../stores/categoryStore';
+import { CategoryIcon } from './CategoryIcon';
 import { ChevronLeft, ChevronRight, PieChart } from 'lucide-solid';
 
 export const MonthlyRecap: Component = () => {
@@ -84,11 +86,12 @@ export const MonthlyRecap: Component = () => {
                 <div>
                   <div class="flex items-center justify-between text-xs font-semibold mb-1">
                     <span class="text-warm-ink flex items-center gap-1.5">
-                      <span
-                        class="w-2.5 h-2.5 rounded-full inline-block"
-                        style={{ 'background-color': item.color }}
-                      ></span>
-                      {item.category}
+                      <CategoryIcon
+                        name={getCategoryConfig(item.category).icon}
+                        class="w-3.5 h-3.5 shrink-0"
+                        style={{ color: item.color }}
+                      />
+                      <span>{item.category}</span>
                     </span>
                     <span class="text-warm-mute tabular-nums">
                       {formatRupiah(item.total)} ({item.percentage}%)

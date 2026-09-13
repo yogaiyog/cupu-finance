@@ -1,31 +1,16 @@
 import { Component } from 'solid-js';
 import { Expense } from '../types';
-import { CATEGORY_CONFIG, formatRupiah, requestDeleteExpense } from '../stores/expenseStore';
-import { Trash2, Utensils, Car, ShoppingBag, Receipt, Film, MoreHorizontal } from 'lucide-solid';
+import { formatRupiah, requestDeleteExpense } from '../stores/expenseStore';
+import { getCategoryConfig } from '../stores/categoryStore';
+import { CategoryIcon } from './CategoryIcon';
+import { Trash2 } from 'lucide-solid';
 
 interface ExpenseItemProps {
   expense: Expense;
 }
 
 export const ExpenseItem: Component<ExpenseItemProps> = (props) => {
-  const config = () => CATEGORY_CONFIG[props.expense.category] || CATEGORY_CONFIG.Lainnya;
-
-  const renderIcon = () => {
-    switch (props.expense.category) {
-      case 'Makanan':
-        return <Utensils class="w-4 h-4" style={{ color: config().color }} />;
-      case 'Transport':
-        return <Car class="w-4 h-4" style={{ color: config().color }} />;
-      case 'Belanja':
-        return <ShoppingBag class="w-4 h-4" style={{ color: config().color }} />;
-      case 'Tagihan':
-        return <Receipt class="w-4 h-4" style={{ color: config().color }} />;
-      case 'Hiburan':
-        return <Film class="w-4 h-4" style={{ color: config().color }} />;
-      default:
-        return <MoreHorizontal class="w-4 h-4" style={{ color: config().color }} />;
-    }
-  };
+  const config = () => getCategoryConfig(props.expense.category);
 
   const handleDelete = (e: MouseEvent) => {
     e.stopPropagation();
@@ -40,7 +25,7 @@ export const ExpenseItem: Component<ExpenseItemProps> = (props) => {
           class="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
           style={{ 'background-color': config().softColor }}
         >
-          {renderIcon()}
+          <CategoryIcon name={config().icon} class="w-4 h-4" style={{ color: config().color }} />
         </div>
 
         {/* Keterangan */}
