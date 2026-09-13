@@ -1,4 +1,4 @@
-import { Component, createSignal, Show } from 'solid-js';
+import { Component, createSignal, Show, For } from 'solid-js';
 import {
   settings,
   updateSettings,
@@ -32,7 +32,13 @@ import {
   Calculator,
   ChevronDown,
   X,
+  Tag,
+  Plus,
 } from 'lucide-solid';
+import { categories, removeCategory } from '../stores/categoryStore';
+import { CategoryIcon } from './CategoryIcon';
+import { AddCategoryModal } from './AddCategoryModal';
+import { Category } from '../types';
 
 export const SettingsView: Component = () => {
   const [isSyncOpen, setIsSyncOpen] = createSignal(false);
@@ -58,6 +64,24 @@ export const SettingsView: Component = () => {
   const [isSaTesting, setIsSaTesting] = createSignal(false);
   const [copiedEmail, setCopiedEmail] = createSignal(false);
   const [showGuideModal, setShowGuideModal] = createSignal(false);
+
+  // State Kelola Kategori
+  const [showAddCategoryModal, setShowAddCategoryModal] = createSignal(false);
+  const [categoryDeleteError, setCategoryDeleteError] = createSignal('');
+
+  const handleDeleteCategory = async (cat: Category) => {
+    if (cat.isDefault) return;
+    if (!confirm(`Hapus kategori "${cat.name}"? Pengeluaran yang sudah ada dengan kategori ini akan tetap tersimpan.`)) {
+      return;
+    }
+
+    try {
+      setCategoryDeleteError('');
+      await removeCategory(cat.id);
+    } catch (err: any) {
+      setCategoryDeleteError(err.message || 'Gagal menghapus kategori');
+    }
+  };
 
   // Email robot dari input atau settings
   const currentBotEmail = () => {
@@ -506,6 +530,75 @@ export const SettingsView: Component = () => {
         </div>
       </div>
 
+      {/* KELOLA KATEGORI */}
+      <div class="bg-warm-card border border-warm-border rounded-2xl p-5 mb-5 shadow-[0_1px_3px_rgba(45,40,37,0.03)]">
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <h3 class="text-sm font-bold text-warm-ink flex items-center gap-2">
+              <Tag class="w-4 h-4 text-warm-primary" />
+              Kelola Kategori
+            </h3>
+            <p class="text-[11px] text-warm-mute mt-0.5">
+              Kustomisasi daftar kategori pengeluaran Anda
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowAddCategoryModal(true)}
+            class="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-warm-primary text-white text-xs font-semibold hover:bg-warm-primary-dark transition-colors shadow-xs"
+          >
+            <Plus class="w-3.5 h-3.5" />
+            <span>Tambah</span>
+          </button>
+        </div>
+
+        <Show when={categoryDeleteError()}>
+          <p class="text-xs text-cat-bills font-medium mb-2">{categoryDeleteError()}</p>
+        </Show>
+
+        <div class="space-y-2 mt-3 max-h-60 overflow-y-auto pr-1">
+          <For each={categories()}>
+            {(cat) => (
+              <div class="flex items-center justify-between p-2.5 bg-warm-canvas/60 border border-warm-border/60 rounded-xl">
+                <div class="flex items-center gap-2.5">
+                  <div
+                    class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                    style={{ 'background-color': cat.softColor }}
+                  >
+                    <CategoryIcon
+                      name={cat.icon}
+                      class="w-3.5 h-3.5"
+                      style={{ color: cat.color }}
+                    />
+                  </div>
+                  <span class="text-xs font-bold text-warm-ink">{cat.name}</span>
+                </div>
+
+                <div class="flex items-center gap-2">
+                  <Show
+                    when={!cat.isDefault}
+                    fallback={
+                      <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-warm-subtle text-warm-mute">
+                        Bawaan
+                      </span>
+                    }
+                  >
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteCategory(cat)}
+                      class="p-1.5 text-warm-mute hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                      title="Hapus Kategori"
+                    >
+                      <Trash2 class="w-3.5 h-3.5" />
+                    </button>
+                  </Show>
+                </div>
+              </div>
+            )}
+          </For>
+        </div>
+      </div>
+
       {/* MANAJEMEN DATA & CADANGAN */}
       <div class="bg-warm-card border border-warm-border rounded-2xl p-5 mb-5 shadow-[0_1px_3px_rgba(45,40,37,0.03)]">
         <h3 class="text-sm font-bold text-warm-ink mb-3 flex items-center gap-2">
@@ -653,6 +746,12 @@ export const SettingsView: Component = () => {
           </div>
         </div>
       </Show>
+
+      {/* Modal Tambah Kategori */}
+      <AddCategoryModal
+        isOpen={showAddCategoryModal()}
+        onClose={() => setShowAddCategoryModal(false)}
+      />
     </div>
   );
 };
