@@ -134,31 +134,24 @@ export const ExpenseForm: Component = () => {
         <div class="flex items-center gap-1.5 mt-3">
           <button
             type="button"
+            onClick={() => addQuickAmount(1000)}
+            class="px-2.5 py-1 text-xs rounded-full bg-warm-subtle text-warm-ink hover:bg-warm-primary/30 transition-colors font-medium active:scale-95"
+          >
+            +1k
+          </button>
+          <button
+            type="button"
             onClick={() => addQuickAmount(10000)}
             class="px-2.5 py-1 text-xs rounded-full bg-warm-subtle text-warm-ink hover:bg-warm-primary/30 transition-colors font-medium active:scale-95"
           >
-            +10rb
-          </button>
-          <button
-            type="button"
-            onClick={() => addQuickAmount(20000)}
-            class="px-2.5 py-1 text-xs rounded-full bg-warm-subtle text-warm-ink hover:bg-warm-primary/30 transition-colors font-medium active:scale-95"
-          >
-            +20rb
-          </button>
-          <button
-            type="button"
-            onClick={() => addQuickAmount(50000)}
-            class="px-2.5 py-1 text-xs rounded-full bg-warm-subtle text-warm-ink hover:bg-warm-primary/30 transition-colors font-medium active:scale-95"
-          >
-            +50rb
+            +10k
           </button>
           <button
             type="button"
             onClick={() => addQuickAmount(100000)}
             class="px-2.5 py-1 text-xs rounded-full bg-warm-subtle text-warm-ink hover:bg-warm-primary/30 transition-colors font-medium active:scale-95"
           >
-            +100rb
+            +100k
           </button>
         </div>
       </div>
