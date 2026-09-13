@@ -30,12 +30,15 @@ function doPost(e) {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var sheet = ss.getSheetByName("Expenses");
     
-    // Inisialisasi sheet dan header jika belum ada
+    // Inisialisasi sheet Expenses dan header jika belum ada
     if (!sheet) {
       sheet = ss.insertSheet("Expenses");
       sheet.appendRow(["id", "date", "amount", "category", "note", "updated_at", "is_deleted"]);
       sheet.getRange(1, 1, 1, 7).setFontWeight("bold").setBackground("#f5ebe0");
     }
+    
+    // Inisialisasi tab Statistik dan Chart jika belum ada
+    ensureStatistikSheet(ss);
     
     var requestData = {};
     if (e && e.postData && e.postData.contents) {
@@ -127,4 +130,71 @@ function doGet(e) {
     success: true,
     message: "Cupu Finance Google Apps Script backend aktif dan siap digunakan."
   })).setMimeType(ContentService.MimeType.JSON);
+}
+
+function ensureStatistikSheet(ss) {
+  try {
+    var statSheet = ss.getSheetByName("Statistik");
+    if (!statSheet) {
+      statSheet = ss.insertSheet("Statistik", 0);
+      
+      // Judul Banner
+      statSheet.getRange("A1:C1").setValues([["📊 RINGKASAN & STATISTIK KEUANGAN", "", ""]])
+        .setFontWeight("bold").setFontSize(13);
+      
+      // KPI Header
+      statSheet.getRange("A3:B3").setValues([["Indikator", "Nilai"]])
+        .setFontWeight("bold").setBackground("#e8e4df");
+      
+      // KPI Baris
+      var kpiRows = [
+        ["Total Pengeluaran", '=SUMIFS(Expenses!C2:C, Expenses!G2:G, "<>TRUE")'],
+        ["Pengeluaran Bulan Ini", '=SUMIFS(Expenses!C2:C, Expenses!B2:B, ">=" & TEXT(TODAY(), "yyyy-mm-01"), Expenses!B2:B, "<=" & TEXT(EOMONTH(TODAY(), 0), "yyyy-mm-dd"), Expenses!G2:G, "<>TRUE")'],
+        ["Rata-rata Harian", '=IFERROR(B4 / MAX(1, COUNTUNIQUEIFS(Expenses!B2:B, Expenses!C2:C, ">0", Expenses!G2:G, "<>TRUE")), 0)'],
+        ["Jumlah Transaksi", '=COUNTIFS(Expenses!C2:C, ">0", Expenses!G2:G, "<>TRUE")'],
+        ["Kategori Paling Boros", '=IF(MAX(B11:B16)>0, INDEX(A11:A16, MATCH(MAX(B11:B16), B11:B16, 0)), "-")']
+      ];
+      statSheet.getRange("A4:B8").setValues(kpiRows);
+      statSheet.getRange("B4:B6").setNumberFormat('"Rp "#,##0');
+      statSheet.getRange("B7").setNumberFormat('#,##0');
+      
+      // Tabel Kategori Header
+      statSheet.getRange("A10:C10").setValues([["Kategori", "Total Pengeluaran", "Porsi (%)"]])
+        .setFontWeight("bold").setBackground("#e8e4df");
+      
+      var categories = ["Makanan", "Transportasi", "Belanja", "Tagihan", "Hiburan", "Lainnya"];
+      var catRows = [];
+      for (var i = 0; i < categories.length; i++) {
+        var r = 11 + i;
+        catRows.push([
+          categories[i],
+          '=SUMIFS(Expenses!$C$2:$C, Expenses!$D$2:$D, A' + r + ', Expenses!$G$2:$G, "<>TRUE")',
+          '=IFERROR(B' + r + ' / $B$4, 0)'
+        ]);
+      }
+      statSheet.getRange("A11:C16").setValues(catRows);
+      statSheet.getRange("B11:B16").setNumberFormat('"Rp "#,##0');
+      statSheet.getRange("C11:C16").setNumberFormat('0.0%');
+      
+      statSheet.setColumnWidth(1, 210);
+      statSheet.setColumnWidth(2, 170);
+      statSheet.setColumnWidth(3, 100);
+      statSheet.setColumnWidth(4, 30);
+      
+      // Visual Donut Chart
+      var chart = statSheet.newChart()
+        .asPieChart()
+        .setTitle("Proporsi Pengeluaran per Kategori")
+        .addRange(statSheet.getRange("A11:A16"))
+        .addRange(statSheet.getRange("B11:B16"))
+        .setPosition(3, 5, 10, 0)
+        .setOption("pieHole", 0.4)
+        .setOption("width", 520)
+        .setOption("height", 340)
+        .build();
+      statSheet.insertChart(chart);
+    }
+  } catch (err) {
+    // Abaikan agar tidak memblokir sinkronisasi utama
+  }
 }

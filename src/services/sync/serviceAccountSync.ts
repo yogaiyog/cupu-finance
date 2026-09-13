@@ -1,6 +1,7 @@
 import { Expense } from '../../types';
 import { settings } from '../../stores/settingsStore';
 import { SyncProvider, SyncResult } from './types';
+import { db } from '../db';
 
 function pemToBinary(pem: string): ArrayBuffer {
   const b64 = pem
@@ -156,7 +157,7 @@ export class ServiceAccountSyncProvider implements SyncProvider {
 
       // Cek metadata spreadsheet
       const metaRes = await fetch(
-        `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets.properties`,
+        `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets.properties,sheets.charts`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -187,8 +188,13 @@ export class ServiceAccountSyncProvider implements SyncProvider {
       const sheets = metaData.sheets || [];
       const hasExpensesTab = sheets.some((s: any) => s.properties?.title === 'Expenses');
 
-      // Jika belum ada tab Expenses, buat atau format header
+      // Pastikan tab Expenses dan Statistik tersedia
       await this.ensureExpensesSheet(token, spreadsheetId, hasExpensesTab);
+      try {
+        await this.ensureStatisticsSheet(token, spreadsheetId, sheets);
+      } catch (err) {
+        console.warn('Gagal menyiapkan sheet statistik:', err);
+      }
 
       return {
         success: true,
@@ -252,6 +258,351 @@ export class ServiceAccountSyncProvider implements SyncProvider {
   }
 
   /**
+   * Pastikan tab 'Statistik' dan chart visual tersedia
+   */
+  private async ensureStatisticsSheet(token: string, spreadsheetId: string, sheets: any[]): Promise<void> {
+    const authHeaders = {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    };
+
+    let statSheet = sheets.find((s: any) => s.properties?.title === 'Statistik');
+    let statSheetId: number | undefined = statSheet?.properties?.sheetId;
+
+    // Ambil daftar kategori dari database (bawaan + custom)
+    const defaultNames = ['Makanan', 'Transportasi', 'Belanja', 'Tagihan', 'Hiburan', 'Lainnya'];
+    const catNames = [...defaultNames];
+    try {
+      const allCats = await db.getAllCategories();
+      for (const c of allCats) {
+        if (!catNames.includes(c.name)) {
+          catNames.push(c.name);
+        }
+      }
+    } catch {
+      // fallback
+    }
+
+    const endRow = 10 + catNames.length;
+
+    // 1. Buat sheet 'Statistik' di index 0 jika belum ada
+    if (!statSheet) {
+      const addRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({
+          requests: [
+            {
+              addSheet: {
+                properties: {
+                  title: 'Statistik',
+                  index: 0,
+                  gridProperties: {
+                    rowCount: Math.max(50, endRow + 10),
+                    columnCount: 15,
+                  },
+                },
+              },
+            },
+          ],
+        }),
+      });
+
+      if (!addRes.ok) {
+        console.warn('Gagal menambahkan tab Statistik:', await addRes.text());
+        return;
+      }
+
+      const addData = await addRes.json();
+      statSheetId = addData.replies?.[0]?.addSheet?.properties?.sheetId;
+    }
+
+    if (statSheetId === undefined) return;
+
+    // 2. Cek apakah formula sudah terisi di tab Statistik
+    const checkRes = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Statistik!A1:B4`,
+      { headers: authHeaders }
+    );
+    const checkData = await checkRes.json().catch(() => ({}));
+    const needsValues = !checkData.values || checkData.values.length === 0 || !checkData.values[0]?.[0];
+
+    if (needsValues) {
+      // Siapkan data baris formula otomatis
+      const rows: string[][] = [
+        ['📊 RINGKASAN & STATISTIK KEUANGAN', '', ''],
+        ['', '', ''],
+        ['Indikator', 'Nilai', ''],
+        ['Total Pengeluaran', '=SUMIFS(Expenses!C2:C, Expenses!G2:G, "<>TRUE")', ''],
+        [
+          'Pengeluaran Bulan Ini',
+          '=SUMIFS(Expenses!C2:C, Expenses!B2:B, ">=" & TEXT(TODAY(), "yyyy-mm-01"), Expenses!B2:B, "<=" & TEXT(EOMONTH(TODAY(), 0), "yyyy-mm-dd"), Expenses!G2:G, "<>TRUE")',
+          '',
+        ],
+        [
+          'Rata-rata Harian',
+          '=IFERROR(B4 / MAX(1, COUNTUNIQUEIFS(Expenses!B2:B, Expenses!C2:C, ">0", Expenses!G2:G, "<>TRUE")), 0)',
+          '',
+        ],
+        ['Jumlah Transaksi', '=COUNTIFS(Expenses!C2:C, ">0", Expenses!G2:G, "<>TRUE")', ''],
+        [
+          'Kategori Paling Boros',
+          `=IF(MAX(B11:B${endRow})>0, INDEX(A11:A${endRow}, MATCH(MAX(B11:B${endRow}), B11:B${endRow}, 0)), "-")`,
+          '',
+        ],
+        ['', '', ''],
+        ['Kategori', 'Total Pengeluaran', 'Porsi (%)'],
+      ];
+
+      for (let i = 0; i < catNames.length; i++) {
+        const r = 11 + i;
+        rows.push([
+          catNames[i],
+          `=SUMIFS(Expenses!$C$2:$C, Expenses!$D$2:$D, A${r}, Expenses!$G$2:$G, "<>TRUE")`,
+          `=IFERROR(B${r} / $B$4, 0)`,
+        ]);
+      }
+
+      await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Statistik!A1:C${endRow}?valueInputOption=USER_ENTERED`,
+        {
+          method: 'PUT',
+          headers: authHeaders,
+          body: JSON.stringify({ values: rows }),
+        }
+      );
+    }
+
+    // 3. Cek apakah chart sudah ada
+    const hasChart = statSheet?.charts && statSheet.charts.length > 0;
+
+    // Format tampilan sel & chart visual
+    const formatRequests: any[] = [
+      // Banner Judul A1
+      {
+        repeatCell: {
+          range: {
+            sheetId: statSheetId,
+            startRowIndex: 0,
+            endRowIndex: 1,
+            startColumnIndex: 0,
+            endColumnIndex: 3,
+          },
+          cell: {
+            userEnteredFormat: {
+              textFormat: { bold: true, fontSize: 13, foregroundColor: { red: 0.18, green: 0.16, blue: 0.15 } },
+            },
+          },
+          fields: 'userEnteredFormat.textFormat',
+        },
+      },
+      // Header KPI (Baris 3)
+      {
+        repeatCell: {
+          range: {
+            sheetId: statSheetId,
+            startRowIndex: 2,
+            endRowIndex: 3,
+            startColumnIndex: 0,
+            endColumnIndex: 2,
+          },
+          cell: {
+            userEnteredFormat: {
+              backgroundColor: { red: 0.91, green: 0.89, blue: 0.87 },
+              textFormat: { bold: true, foregroundColor: { red: 0.18, green: 0.16, blue: 0.15 } },
+            },
+          },
+          fields: 'userEnteredFormat(backgroundColor,textFormat)',
+        },
+      },
+      // Header Kategori (Baris 10)
+      {
+        repeatCell: {
+          range: {
+            sheetId: statSheetId,
+            startRowIndex: 9,
+            endRowIndex: 10,
+            startColumnIndex: 0,
+            endColumnIndex: 3,
+          },
+          cell: {
+            userEnteredFormat: {
+              backgroundColor: { red: 0.91, green: 0.89, blue: 0.87 },
+              textFormat: { bold: true, foregroundColor: { red: 0.18, green: 0.16, blue: 0.15 } },
+            },
+          },
+          fields: 'userEnteredFormat(backgroundColor,textFormat)',
+        },
+      },
+      // Format Mata Uang B4:B6
+      {
+        repeatCell: {
+          range: {
+            sheetId: statSheetId,
+            startRowIndex: 3,
+            endRowIndex: 6,
+            startColumnIndex: 1,
+            endColumnIndex: 2,
+          },
+          cell: {
+            userEnteredFormat: {
+              numberFormat: { type: 'CURRENCY', pattern: '"Rp "#,##0' },
+            },
+          },
+          fields: 'userEnteredFormat.numberFormat',
+        },
+      },
+      // Format Jumlah Transaksi B7
+      {
+        repeatCell: {
+          range: {
+            sheetId: statSheetId,
+            startRowIndex: 6,
+            endRowIndex: 7,
+            startColumnIndex: 1,
+            endColumnIndex: 2,
+          },
+          cell: {
+            userEnteredFormat: {
+              numberFormat: { type: 'NUMBER', pattern: '#,##0' },
+            },
+          },
+          fields: 'userEnteredFormat.numberFormat',
+        },
+      },
+      // Format Mata Uang Total Kategori B11:BendRow
+      {
+        repeatCell: {
+          range: {
+            sheetId: statSheetId,
+            startRowIndex: 10,
+            endRowIndex: endRow,
+            startColumnIndex: 1,
+            endColumnIndex: 2,
+          },
+          cell: {
+            userEnteredFormat: {
+              numberFormat: { type: 'CURRENCY', pattern: '"Rp "#,##0' },
+            },
+          },
+          fields: 'userEnteredFormat.numberFormat',
+        },
+      },
+      // Format Persentase C11:CendRow
+      {
+        repeatCell: {
+          range: {
+            sheetId: statSheetId,
+            startRowIndex: 10,
+            endRowIndex: endRow,
+            startColumnIndex: 2,
+            endColumnIndex: 3,
+          },
+          cell: {
+            userEnteredFormat: {
+              numberFormat: { type: 'PERCENT', pattern: '0.0%' },
+            },
+          },
+          fields: 'userEnteredFormat.numberFormat',
+        },
+      },
+      // Lebar Kolom A, B, C, D
+      {
+        updateDimensionProperties: {
+          range: { sheetId: statSheetId, dimension: 'COLUMNS', startIndex: 0, endIndex: 1 },
+          properties: { pixelSize: 210 },
+          fields: 'pixelSize',
+        },
+      },
+      {
+        updateDimensionProperties: {
+          range: { sheetId: statSheetId, dimension: 'COLUMNS', startIndex: 1, endIndex: 2 },
+          properties: { pixelSize: 170 },
+          fields: 'pixelSize',
+        },
+      },
+      {
+        updateDimensionProperties: {
+          range: { sheetId: statSheetId, dimension: 'COLUMNS', startIndex: 2, endIndex: 3 },
+          properties: { pixelSize: 100 },
+          fields: 'pixelSize',
+        },
+      },
+      {
+        updateDimensionProperties: {
+          range: { sheetId: statSheetId, dimension: 'COLUMNS', startIndex: 3, endIndex: 4 },
+          properties: { pixelSize: 30 },
+          fields: 'pixelSize',
+        },
+      },
+    ];
+
+    // Tambahkan Donut Chart jika belum ada
+    if (!hasChart) {
+      formatRequests.push({
+        addChart: {
+          chart: {
+            spec: {
+              title: 'Proporsi Pengeluaran per Kategori',
+              pieChart: {
+                legendPosition: 'RIGHT_LEGEND',
+                domain: {
+                  sourceRange: {
+                    sources: [
+                      {
+                        sheetId: statSheetId,
+                        startRowIndex: 10,
+                        endRowIndex: endRow,
+                        startColumnIndex: 0,
+                        endColumnIndex: 1,
+                      },
+                    ],
+                  },
+                },
+                series: {
+                  sourceRange: {
+                    sources: [
+                      {
+                        sheetId: statSheetId,
+                        startRowIndex: 10,
+                        endRowIndex: endRow,
+                        startColumnIndex: 1,
+                        endColumnIndex: 2,
+                      },
+                    ],
+                  },
+                },
+                pieHole: 0.4,
+              },
+            },
+            position: {
+              overlayPosition: {
+                anchorCell: {
+                  sheetId: statSheetId,
+                  rowIndex: 2,
+                  columnIndex: 4,
+                },
+                offsetXPixels: 10,
+                offsetYPixels: 0,
+                widthPixels: 520,
+                heightPixels: 340,
+              },
+            },
+          },
+        },
+      });
+    }
+
+    if (needsValues || !hasChart) {
+      await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({ requests: formatRequests }),
+      });
+    }
+  }
+
+  /**
    * Sinkronisasi dua arah via Google Sheets REST API v4
    */
   async sync(pendingChanges: Expense[], lastSyncTimestamp: number): Promise<SyncResult> {
@@ -266,6 +617,25 @@ export class ServiceAccountSyncProvider implements SyncProvider {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       };
+
+      // Pastikan tab Expenses dan Statistik tersedia
+      try {
+        const metaRes = await fetch(
+          `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets.properties,sheets.charts`,
+          { headers: authHeaders }
+        );
+        if (metaRes.ok) {
+          const metaData = await metaRes.json();
+          const sheets = metaData.sheets || [];
+          const hasExpensesTab = sheets.some((s: any) => s.properties?.title === 'Expenses');
+          if (!hasExpensesTab) {
+            await this.ensureExpensesSheet(token, spreadsheetId, false);
+          }
+          await this.ensureStatisticsSheet(token, spreadsheetId, sheets);
+        }
+      } catch (err) {
+        console.warn('Gagal memeriksa/menyiapkan sheet statistik saat sync:', err);
+      }
 
       const readUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Expenses!A:G`;
       const readRes = await fetch(readUrl, { headers: authHeaders });
