@@ -2,6 +2,7 @@ import { createSignal, createMemo } from 'solid-js';
 import { db } from '../services/db';
 import { Expense, ExpenseCategory, CategorySummary } from '../types';
 import { triggerSync, refreshPendingCount } from '../services/sync/syncManager';
+import { categories, getCategoryConfig } from './categoryStore';
 
 // Default bulan saat ini: YYYY-MM
 const getCurrentYearMonth = (): string => {
@@ -234,22 +235,32 @@ export const dailyAverageExpense = createMemo(() => {
 export const categoryBreakdown = createMemo<CategorySummary[]>(() => {
   const items = expenses();
   const total = totalMonthlyExpense();
-  const categoryMap: Partial<Record<ExpenseCategory, number>> = {};
+  const categoryMap: Record<string, number> = {};
 
   items.forEach((item) => {
     categoryMap[item.category] = (categoryMap[item.category] || 0) + item.amount;
   });
 
-  const list: CategorySummary[] = Object.keys(CATEGORY_CONFIG).map((catKey) => {
-    const cat = catKey as ExpenseCategory;
-    const catTotal = categoryMap[cat] || 0;
+  // Gabungkan semua kategori terdaftar + kategori yang mungkin ada di transaksi tapi belum ada di list
+  const knownCatNames = new Set(categories().map((c) => c.name));
+  const allCatNames = [...categories().map((c) => c.name)];
+
+  Object.keys(categoryMap).forEach((name) => {
+    if (!knownCatNames.has(name)) {
+      allCatNames.push(name);
+    }
+  });
+
+  const list: CategorySummary[] = allCatNames.map((catName) => {
+    const catTotal = categoryMap[catName] || 0;
     const pct = total > 0 ? Math.round((catTotal / total) * 100) : 0;
+    const config = getCategoryConfig(catName);
     return {
-      category: cat,
+      category: catName,
       total: catTotal,
       percentage: pct,
-      color: CATEGORY_CONFIG[cat].color,
-      softColor: CATEGORY_CONFIG[cat].softColor,
+      color: config.color,
+      softColor: config.softColor,
     };
   });
 

@@ -1,13 +1,17 @@
 import { Component, createSignal, For } from 'solid-js';
 import { ExpenseCategory } from '../types';
-import { CATEGORY_CONFIG, addExpense } from '../stores/expenseStore';
-import { Check, MessageSquare, Utensils, Car, ShoppingBag, Receipt, Film, MoreHorizontal } from 'lucide-solid';
+import { addExpense } from '../stores/expenseStore';
+import { categories } from '../stores/categoryStore';
+import { CategoryIcon } from './CategoryIcon';
+import { AddCategoryModal } from './AddCategoryModal';
+import { Check, MessageSquare, Plus } from 'lucide-solid';
 
 export const ExpenseForm: Component = () => {
   const [rawAmount, setRawAmount] = createSignal<string>('');
   const [selectedCategory, setSelectedCategory] = createSignal<ExpenseCategory>('Makanan');
   const [note, setNote] = createSignal<string>('');
   const [isSuccess, setIsSuccess] = createSignal<boolean>(false);
+  const [showAddModal, setShowAddModal] = createSignal<boolean>(false);
 
   // Format input angka menjadi ribuan dengan prefix Rp
   const handleAmountInput = (e: InputEvent) => {
@@ -53,23 +57,6 @@ export const ExpenseForm: Component = () => {
     setNote('');
     setIsSuccess(true);
     setTimeout(() => setIsSuccess(false), 2000);
-  };
-
-  const renderCategoryIcon = (cat: ExpenseCategory) => {
-    switch (cat) {
-      case 'Makanan':
-        return <Utensils class="w-3.5 h-3.5" />;
-      case 'Transport':
-        return <Car class="w-3.5 h-3.5" />;
-      case 'Belanja':
-        return <ShoppingBag class="w-3.5 h-3.5" />;
-      case 'Tagihan':
-        return <Receipt class="w-3.5 h-3.5" />;
-      case 'Hiburan':
-        return <Film class="w-3.5 h-3.5" />;
-      default:
-        return <MoreHorizontal class="w-3.5 h-3.5" />;
-    }
   };
 
   return (
@@ -136,27 +123,37 @@ export const ExpenseForm: Component = () => {
       <div class="mt-4">
         <label class="text-xs font-semibold text-warm-mute block mb-2">Pilih Kategori</label>
         <div class="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-          <For each={Object.keys(CATEGORY_CONFIG) as ExpenseCategory[]}>
+          <For each={categories()}>
             {(cat) => {
-              const isSelected = () => selectedCategory() === cat;
+              const isSelected = () => selectedCategory() === cat.name;
               return (
                 <button
                   type="button"
-                  onClick={() => setSelectedCategory(cat)}
+                  onClick={() => setSelectedCategory(cat.name)}
                   class={`flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold shrink-0 transition-all border ${
                     isSelected()
                       ? 'bg-warm-primary text-white border-warm-primary shadow-sm scale-100'
                       : 'bg-warm-subtle text-warm-ink border-warm-border hover:border-warm-primary/50'
                   }`}
                 >
-                  <span style={{ color: isSelected() ? '#ffffff' : CATEGORY_CONFIG[cat].color }}>
-                    {renderCategoryIcon(cat)}
+                  <span style={{ color: isSelected() ? '#ffffff' : cat.color }}>
+                    <CategoryIcon name={cat.icon} class="w-3.5 h-3.5" />
                   </span>
-                  <span>{cat}</span>
+                  <span>{cat.name}</span>
                 </button>
               );
             }}
           </For>
+
+          {/* Tombol Tambah Kategori */}
+          <button
+            type="button"
+            onClick={() => setShowAddModal(true)}
+            class="flex items-center gap-1 px-3 py-2 rounded-full text-xs font-semibold shrink-0 transition-all border border-dashed border-warm-primary text-warm-primary bg-warm-card hover:bg-warm-subtle/50"
+          >
+            <Plus class="w-3.5 h-3.5" />
+            <span>Tambah</span>
+          </button>
         </div>
       </div>
 
@@ -194,6 +191,12 @@ export const ExpenseForm: Component = () => {
           )}
         </button>
       </div>
+
+      <AddCategoryModal
+        isOpen={showAddModal()}
+        onClose={() => setShowAddModal(false)}
+        onCreated={(newCat) => setSelectedCategory(newCat.name)}
+      />
     </form>
   );
 };
