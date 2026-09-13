@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --app-canvas: #edede9;
+    --app-card: #f5ebe0;
+    --app-border: #d6ccc2;
+    --app-subtle: #e3d5ca;
+    --app-primary: #d5bdaf;
+    --app-ink: #2d2825;
+    --app-mute: #6b635b;
+  }
+
+  body {
+    background-color: var(--app-canvas);
+    color: var(--app-ink);
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  input, button {
+    font-family: inherit;
+  }
+
+  /* Hide scrollbars on category chip sliders */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}

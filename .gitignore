@@ -1,0 +1,56 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Production build outputs
+dist/
+dist-ssr/
+build/
+*.local
+
+# Environment & Secrets
+.env
+.env.production
+.env.*.local
+*.pem
+*.key
+
+# Editor & IDE files
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.swp
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Capacitor / Mobile Platform build artifacts
+android/app/build/
+android/.gradle/
+android/local.properties
+android/.idea/
+android/captures/
+ios/App/Pods/
+ios/App/Podfile.lock
+ios/App/build/

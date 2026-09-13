@@ -1,0 +1,199 @@
+import { Component, createSignal, For } from 'solid-js';
+import { ExpenseCategory } from '../types';
+import { CATEGORY_CONFIG, addExpense } from '../stores/expenseStore';
+import { Check, MessageSquare, Utensils, Car, ShoppingBag, Receipt, Film, MoreHorizontal } from 'lucide-solid';
+
+export const ExpenseForm: Component = () => {
+  const [rawAmount, setRawAmount] = createSignal<string>('');
+  const [selectedCategory, setSelectedCategory] = createSignal<ExpenseCategory>('Makanan');
+  const [note, setNote] = createSignal<string>('');
+  const [isSuccess, setIsSuccess] = createSignal<boolean>(false);
+
+  // Format input angka menjadi ribuan dengan prefix Rp
+  const handleAmountInput = (e: InputEvent) => {
+    const target = e.target as HTMLInputElement;
+    const digitsOnly = target.value.replace(/\D/g, '');
+    setRawAmount(digitsOnly);
+  };
+
+  const formattedDisplay = () => {
+    if (!rawAmount()) return '';
+    return Number(rawAmount()).toLocaleString('id-ID');
+  };
+
+  // Shortcut penambahan nominal cepat
+  const addQuickAmount = (val: number) => {
+    const current = Number(rawAmount()) || 0;
+    setRawAmount(String(current + val));
+  };
+
+  const handleClear = () => {
+    setRawAmount('');
+  };
+
+  const handleSubmit = async (e: Event) => {
+    e.preventDefault();
+    const amountNum = Number(rawAmount());
+    if (!amountNum || amountNum <= 0) {
+      alert('Masukkan nominal pengeluaran yang valid.');
+      return;
+    }
+
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    await addExpense({
+      amount: amountNum,
+      category: selectedCategory(),
+      note: note(),
+      date: todayStr,
+    });
+
+    // Reset form
+    setRawAmount('');
+    setNote('');
+    setIsSuccess(true);
+    setTimeout(() => setIsSuccess(false), 2000);
+  };
+
+  const renderCategoryIcon = (cat: ExpenseCategory) => {
+    switch (cat) {
+      case 'Makanan':
+        return <Utensils class="w-3.5 h-3.5" />;
+      case 'Transport':
+        return <Car class="w-3.5 h-3.5" />;
+      case 'Belanja':
+        return <ShoppingBag class="w-3.5 h-3.5" />;
+      case 'Tagihan':
+        return <Receipt class="w-3.5 h-3.5" />;
+      case 'Hiburan':
+        return <Film class="w-3.5 h-3.5" />;
+      default:
+        return <MoreHorizontal class="w-3.5 h-3.5" />;
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} class="w-full bg-warm-card border border-warm-border rounded-2xl p-5 shadow-[0_2px_8px_rgba(45,40,37,0.03)] mb-6">
+      {/* AREA INPUT NOMINAL BESAR */}
+      <div class="flex flex-col items-center justify-center py-2">
+        <label class="text-xs font-semibold text-warm-mute mb-1">Nominal Pengeluaran</label>
+        <div class="relative w-full flex items-center justify-center">
+          <span class="text-2xl font-bold text-warm-mute mr-1 select-none">Rp</span>
+          <input
+            type="text"
+            inputMode="numeric"
+            placeholder="0"
+            value={formattedDisplay()}
+            onInput={handleAmountInput}
+            class="text-3xl sm:text-4xl font-bold text-warm-ink bg-transparent text-center focus:outline-none w-56 tracking-tight tabular-nums placeholder:text-warm-faint"
+            autofocus
+          />
+          {rawAmount() && (
+            <button
+              type="button"
+              onClick={handleClear}
+              class="absolute right-2 text-xs font-medium text-warm-mute hover:text-warm-ink px-2 py-1 bg-warm-subtle rounded-md"
+            >
+              Hapus
+            </button>
+          )}
+        </div>
+
+        {/* Quick Amount Chips */}
+        <div class="flex items-center gap-1.5 mt-3">
+          <button
+            type="button"
+            onClick={() => addQuickAmount(10000)}
+            class="px-2.5 py-1 text-xs rounded-full bg-warm-subtle text-warm-ink hover:bg-warm-primary/30 transition-colors font-medium active:scale-95"
+          >
+            +10rb
+          </button>
+          <button
+            type="button"
+            onClick={() => addQuickAmount(20000)}
+            class="px-2.5 py-1 text-xs rounded-full bg-warm-subtle text-warm-ink hover:bg-warm-primary/30 transition-colors font-medium active:scale-95"
+          >
+            +20rb
+          </button>
+          <button
+            type="button"
+            onClick={() => addQuickAmount(50000)}
+            class="px-2.5 py-1 text-xs rounded-full bg-warm-subtle text-warm-ink hover:bg-warm-primary/30 transition-colors font-medium active:scale-95"
+          >
+            +50rb
+          </button>
+          <button
+            type="button"
+            onClick={() => addQuickAmount(100000)}
+            class="px-2.5 py-1 text-xs rounded-full bg-warm-subtle text-warm-ink hover:bg-warm-primary/30 transition-colors font-medium active:scale-95"
+          >
+            +100rb
+          </button>
+        </div>
+      </div>
+
+      {/* PILIHAN KATEGORI (HORIZONTAL SCROLL CHIPS) */}
+      <div class="mt-4">
+        <label class="text-xs font-semibold text-warm-mute block mb-2">Pilih Kategori</label>
+        <div class="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+          <For each={Object.keys(CATEGORY_CONFIG) as ExpenseCategory[]}>
+            {(cat) => {
+              const isSelected = () => selectedCategory() === cat;
+              return (
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategory(cat)}
+                  class={`flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold shrink-0 transition-all border ${
+                    isSelected()
+                      ? 'bg-warm-primary text-white border-warm-primary shadow-sm scale-100'
+                      : 'bg-warm-subtle text-warm-ink border-warm-border hover:border-warm-primary/50'
+                  }`}
+                >
+                  <span style={{ color: isSelected() ? '#ffffff' : CATEGORY_CONFIG[cat].color }}>
+                    {renderCategoryIcon(cat)}
+                  </span>
+                  <span>{cat}</span>
+                </button>
+              );
+            }}
+          </For>
+        </div>
+      </div>
+
+      {/* CATATAN OPSIONAL */}
+      <div class="mt-4">
+        <div class="flex items-center gap-2 px-3.5 py-2.5 bg-warm-subtle/60 border border-warm-border rounded-xl">
+          <MessageSquare class="w-4 h-4 text-warm-mute shrink-0" />
+          <input
+            type="text"
+            placeholder="Catatan (opsional)"
+            value={note()}
+            onInput={(e) => setNote(e.currentTarget.value)}
+            class="w-full bg-transparent text-xs text-warm-ink font-medium placeholder:text-warm-faint focus:outline-none"
+          />
+        </div>
+      </div>
+
+      {/* TOMBOL SIMPAN UTAMA */}
+      <div class="mt-5">
+        <button
+          type="submit"
+          class={`w-full h-12 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all active:scale-[0.98] ${
+            isSuccess()
+              ? 'bg-sync-synced text-white shadow-sm'
+              : 'bg-warm-primary text-white hover:bg-warm-primary-dark shadow-[0_2px_8px_rgba(213,189,175,0.4)]'
+          }`}
+        >
+          {isSuccess() ? (
+            <>
+              <Check class="w-5 h-5" />
+              <span>Tersimpan!</span>
+            </>
+          ) : (
+            <span>Simpan Pengeluaran</span>
+          )}
+        </button>
+      </div>
+    </form>
+  );
+};
