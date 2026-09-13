@@ -22,7 +22,6 @@ import {
   Link2,
   HardDrive,
   Trash2,
-  KeyRound,
   FileSpreadsheet,
   CheckCircle2,
   AlertCircle,
@@ -221,39 +220,29 @@ export const SettingsView: Component = () => {
 
   return (
     <div class="w-full pb-16">
-      <h2 class="text-lg font-bold text-warm-ink mb-1">Pengaturan & Sinkronisasi</h2>
-      <p class="text-xs text-warm-mute mb-5">
-        Atur penyimpanan cloud Google Sheet dan cadangan data lokal Anda.
-      </p>
+      <h2 class="text-base font-bold text-warm-ink mb-3.5">Pengaturan</h2>
 
       {/* METODE SINKRONISASI (COLLAPSIBLE) */}
-      <div class="bg-warm-card border border-warm-border rounded-2xl mb-5 shadow-[0_1px_3px_rgba(45,40,37,0.03)] overflow-hidden transition-all">
+      <div class="bg-warm-card border border-warm-border rounded-2xl mb-3.5 shadow-[0_1px_3px_rgba(45,40,37,0.03)] overflow-hidden transition-all">
         {/* Accordion Toggle Header */}
         <button
           type="button"
           onClick={() => setIsSyncOpen(!isSyncOpen())}
-          class="w-full p-4 flex items-center justify-between text-left hover:bg-warm-subtle/50 transition-colors"
+          class="w-full p-3.5 flex items-center justify-between text-left hover:bg-warm-subtle/50 transition-colors"
         >
-          <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded-xl bg-warm-subtle border border-warm-border flex items-center justify-center shrink-0">
-              <Cloud class="w-4 h-4 text-warm-primary" />
+          <div class="flex items-center gap-2.5">
+            <div class="w-7 h-7 rounded-lg bg-warm-subtle border border-warm-border flex items-center justify-center shrink-0">
+              <Cloud class="w-3.5 h-3.5 text-warm-primary" />
             </div>
-            <div>
-              <h3 class="text-xs font-bold text-warm-ink leading-tight">
-                Pilihan Sinkronisasi Cloud
-              </h3>
-              <p class="text-[11px] text-warm-mute mt-0.5">
-                {settings().syncMode === 'service_account'
-                  ? (settings().serviceAccountJson && settings().spreadsheetId ? 'Google Service Account (Aktif)' : 'Google Service Account (Offline)')
-                  : (settings().scriptUrl ? 'Custom Webhook (Aktif)' : 'Custom Webhook (Offline)')}
-              </p>
-            </div>
+            <h3 class="text-xs font-bold text-warm-ink">
+              Sinkronisasi Cloud
+            </h3>
           </div>
           <div class="flex items-center gap-2">
             <span class={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
               syncStatus() === 'synced'
-                ? 'bg-blue-50 text-blue-600 border border-blue-200'
-                : 'bg-amber-50 text-amber-700 border border-amber-200'
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                : 'bg-warm-subtle text-warm-mute border border-warm-border'
             }`}>
               {syncStatus() === 'synced' ? 'Online' : 'Offline'}
             </span>
@@ -267,284 +256,252 @@ export const SettingsView: Component = () => {
 
         {/* Collapsed Body */}
         <Show when={isSyncOpen()}>
-          <div class="p-4 pt-1 border-t border-warm-border/60">
-            <p class="text-[11px] text-warm-mute my-3">
-              Pilih salah satu metode di bawah. Jika kolom input belum diisi, aplikasi otomatis berjalan dalam mode offline lokal.
-            </p>
+          <div class="p-3.5 pt-0 border-t border-warm-border/60">
+            <div class="space-y-2.5 pt-3">
+              {/* Opsi 1: Google Service Account */}
+              <label class={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
+                settings().syncMode === 'service_account'
+                  ? 'bg-warm-subtle/60 border-warm-primary'
+                  : 'border-warm-border hover:bg-warm-subtle/30'
+              }`}>
+                <input
+                  type="radio"
+                  name="syncMode"
+                  checked={settings().syncMode === 'service_account'}
+                  onChange={() => setSyncMode('service_account')}
+                  class="mt-0.5 accent-warm-primary"
+                />
+                <div class="flex-1">
+                  <span class="text-xs font-bold text-warm-ink block">
+                    Google Service Account
+                  </span>
 
-            <div class="space-y-2.5">
-          {/* Opsi 1: Google Service Account (Kunci JSON) */}
-          <label class={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
-            settings().syncMode === 'service_account'
-              ? 'bg-warm-subtle/70 border-warm-primary'
-              : 'border-warm-border hover:bg-warm-subtle/30'
-          }`}>
-            <input
-              type="radio"
-              name="syncMode"
-              checked={settings().syncMode === 'service_account'}
-              onChange={() => setSyncMode('service_account')}
-              class="mt-1 accent-warm-primary"
-            />
-            <div class="flex-1">
-              <span class="text-xs font-bold text-warm-ink block">
-                Google Service Account (Kunci JSON)
-              </span>
-              <span class="text-[11px] text-warm-mute block mt-0.5">
-                Rekomendasi terbaik: tanpa popup login, tidak pernah logout, langsung sinkron otomatis ke Google Sheet.
-              </span>
+                  <Show when={settings().syncMode === 'service_account'}>
+                    <div class="mt-2.5 pt-2.5 border-t border-warm-border/70 space-y-2.5">
+                      {/* Upload & Input JSON */}
+                      <div>
+                        <div class="flex items-center justify-between mb-1.5">
+                          <label class="text-[11px] font-semibold text-warm-mute">
+                            Kunci JSON
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => setShowGuideModal(true)}
+                            class="text-[10px] text-warm-primary hover:underline font-bold flex items-center gap-1"
+                          >
+                            <HelpCircle class="w-3 h-3" />
+                            <span>Panduan</span>
+                          </button>
+                        </div>
 
-              <Show when={settings().syncMode === 'service_account'}>
-                <div class="mt-3 pt-3 border-t border-warm-border space-y-3">
-                  {/* Kolom Input & Upload JSON */}
-                  <div>
-                    <div class="flex items-center justify-between mb-2">
-                      <label class="text-[11px] font-semibold text-warm-mute flex items-center gap-1.5">
-                        <KeyRound class="w-3.5 h-3.5 text-warm-primary" />
-                        <span>Kunci JSON Service Account</span>
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => setShowGuideModal(true)}
-                        class="text-[10.5px] text-warm-primary hover:underline font-bold flex items-center gap-1"
-                      >
-                        <HelpCircle class="w-3 h-3" />
-                        <span>Cara Mendapatkannya</span>
-                      </button>
-                    </div>
+                        <div class="mb-2">
+                          <input
+                            type="file"
+                            accept=".json,application/json"
+                            ref={fileInputRef}
+                            onChange={handleFileUpload}
+                            class="hidden"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => fileInputRef?.click()}
+                            class="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl border border-dashed border-warm-primary bg-warm-card hover:bg-warm-subtle text-warm-ink text-xs font-semibold transition-all active:scale-[0.99]"
+                          >
+                            <Upload class="w-3.5 h-3.5 text-warm-primary" />
+                            <span>Upload File JSON</span>
+                          </button>
+                        </div>
 
-                    {/* Tombol Upload File JSON */}
-                    <div class="mb-2">
-                      <input
-                        type="file"
-                        accept=".json,application/json"
-                        ref={fileInputRef}
-                        onChange={handleFileUpload}
-                        class="hidden"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef?.click()}
-                        class="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl border border-dashed border-warm-primary bg-warm-card hover:bg-warm-subtle/50 text-warm-ink text-xs font-semibold transition-all active:scale-[0.99] shadow-sm"
-                      >
-                        <Upload class="w-4 h-4 text-warm-primary" />
-                        <span>Upload File JSON Service Account</span>
-                      </button>
-                    </div>
-
-                    <textarea
-                      placeholder={'Atau copas isi JSON di sini:\n{\n  "type": "service_account",\n  "client_email": "...",\n  "private_key": "..."\n}'}
-                      value={saJsonInput()}
-                      onInput={(e) => setSaJsonInput(e.currentTarget.value)}
-                      rows={3}
-                      class="w-full text-[11px] p-2.5 bg-warm-card border border-warm-border rounded-lg text-warm-ink focus:outline-none focus:border-warm-primary font-mono placeholder:text-warm-faint resize-y"
-                    ></textarea>
-                  </div>
-
-                  {/* Email bot penerima share spreadsheet */}
-                  <Show when={currentBotEmail()}>
-                    <div class="p-2.5 bg-warm-subtle border border-warm-border rounded-lg text-[11px]">
-                      <div class="text-warm-mute mb-1 font-medium">
-                        Bagikan (Share) Google Sheet Anda ke email robot ini:
+                        <textarea
+                          placeholder="Atau tempel teks JSON di sini..."
+                          value={saJsonInput()}
+                          onInput={(e) => setSaJsonInput(e.currentTarget.value)}
+                          rows={2}
+                          class="w-full text-[11px] p-2 bg-warm-card border border-warm-border rounded-lg text-warm-ink focus:outline-none focus:border-warm-primary font-mono placeholder:text-warm-faint resize-none"
+                        ></textarea>
                       </div>
-                      <div class="flex items-center justify-between gap-2 bg-warm-card p-2 rounded border border-warm-border">
-                        <code class="text-[10px] text-warm-ink font-mono break-all select-all">
-                          {currentBotEmail()}
-                        </code>
-                        <button
-                          type="button"
-                          onClick={handleCopyEmail}
-                          class="p-1 text-warm-primary hover:text-warm-primary-dark shrink-0 flex items-center gap-1 text-[10px] font-semibold"
-                        >
-                          {copiedEmail() ? <Check class="w-3.5 h-3.5 text-cat-health" /> : <Copy class="w-3.5 h-3.5" />}
-                          <span>{copiedEmail() ? 'Disalin' : 'Salin'}</span>
-                        </button>
-                      </div>
-                      <p class="text-[10px] text-warm-mute mt-1">
-                        Pilih hak akses: <strong>Editor</strong> agar data transaksi bisa ditulis.
-                      </p>
-                    </div>
-                  </Show>
 
-                  {/* Kolom Link / ID Google Sheet */}
-                  <div>
-                    <label class="text-[11px] font-semibold text-warm-mute block mb-1 flex items-center gap-1.5">
-                      <FileSpreadsheet class="w-3.5 h-3.5 text-warm-primary" />
-                      <span>Link atau ID Google Sheet Anda</span>
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="https://docs.google.com/spreadsheets/d/1BxiMVs0XR.../edit atau ID saja"
-                      value={sheetIdInput()}
-                      onInput={(e) => setSheetIdInput(e.currentTarget.value)}
-                      class="w-full text-xs p-2.5 bg-warm-card border border-warm-border rounded-lg text-warm-ink focus:outline-none focus:border-warm-primary placeholder:text-warm-faint font-mono"
-                    />
-                  </div>
-
-                  {/* Tombol Simpan & Tes Koneksi */}
-                  <button
-                    type="button"
-                    onClick={handleTestServiceAccount}
-                    disabled={isSaTesting()}
-                    class="w-full px-4 py-2.5 bg-warm-primary text-white text-xs font-semibold rounded-lg shadow-sm hover:bg-warm-primary-dark transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-                  >
-                    <RefreshCw class={`w-3.5 h-3.5 ${isSaTesting() ? 'animate-spin' : ''}`} />
-                    <span>{isSaTesting() ? 'Menguji & Menyiapkan Sheet...' : 'Simpan & Tes Koneksi'}</span>
-                  </button>
-
-                  {/* Feedback Hasil Tes */}
-                  <Show when={saTestStatus().message}>
-                    <div
-                      class={`p-2.5 rounded-lg text-xs font-medium flex items-start gap-2 ${
-                        saTestStatus().success
-                          ? 'bg-cat-health-soft text-cat-health'
-                          : 'bg-cat-bills-soft text-cat-bills'
-                      }`}
-                    >
-                      <Show
-                        when={saTestStatus().success}
-                        fallback={<AlertCircle class="w-4 h-4 shrink-0 mt-0.5" />}
-                      >
-                        <CheckCircle2 class="w-4 h-4 shrink-0 mt-0.5" />
+                      {/* Email bot penerima share */}
+                      <Show when={currentBotEmail()}>
+                        <div class="p-2 bg-warm-card border border-warm-border rounded-lg text-[11px]">
+                          <span class="text-[10px] text-warm-mute block mb-1">
+                            Email Bot (Beri akses Editor):
+                          </span>
+                          <div class="flex items-center justify-between gap-2 bg-warm-canvas/80 p-1.5 rounded border border-warm-border">
+                            <code class="text-[10px] text-warm-ink font-mono break-all select-all">
+                              {currentBotEmail()}
+                            </code>
+                            <button
+                              type="button"
+                              onClick={handleCopyEmail}
+                              class="p-1 text-warm-primary hover:text-warm-primary-dark shrink-0 flex items-center gap-1 text-[10px] font-semibold"
+                            >
+                              {copiedEmail() ? <Check class="w-3 h-3 text-sync-synced" /> : <Copy class="w-3 h-3" />}
+                              <span>{copiedEmail() ? 'Disalin' : 'Salin'}</span>
+                            </button>
+                          </div>
+                        </div>
                       </Show>
-                      <span class="flex-1">{saTestStatus().message}</span>
-                    </div>
-                  </Show>
 
-                  {/* Tautan langsung ke file Sheet jika sudah ada */}
-                  <Show when={settings().spreadsheetId}>
-                    <div class="pt-1 flex items-center justify-between text-[11px]">
-                      <span class="text-warm-mute">Google Sheet Terhubung:</span>
-                      <a
-                        href={`https://docs.google.com/spreadsheets/d/${settings().spreadsheetId}`}
-                        target="_blank"
-                        class="text-cat-transport hover:underline flex items-center gap-1 font-semibold"
+                      {/* Kolom Link / ID Google Sheet */}
+                      <div>
+                        <label class="text-[11px] font-semibold text-warm-mute block mb-1">
+                          Link atau ID Google Sheet
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="https://docs.google.com/spreadsheets/d/..."
+                          value={sheetIdInput()}
+                          onInput={(e) => setSheetIdInput(e.currentTarget.value)}
+                          class="w-full text-xs p-2 bg-warm-card border border-warm-border rounded-lg text-warm-ink focus:outline-none focus:border-warm-primary placeholder:text-warm-faint font-mono"
+                        />
+                      </div>
+
+                      {/* Tombol Simpan & Tes Koneksi */}
+                      <button
+                        type="button"
+                        onClick={handleTestServiceAccount}
+                        disabled={isSaTesting()}
+                        class="w-full py-2 px-3 bg-warm-primary text-white text-xs font-semibold rounded-lg hover:bg-warm-primary-dark transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
                       >
-                        <Link2 class="w-3 h-3" />
-                        <span>Buka di Google Sheets</span>
-                      </a>
+                        <RefreshCw class={`w-3 h-3 ${isSaTesting() ? 'animate-spin' : ''}`} />
+                        <span>{isSaTesting() ? 'Menguji...' : 'Simpan & Tes Koneksi'}</span>
+                      </button>
+
+                      {/* Feedback Hasil Tes */}
+                      <Show when={saTestStatus().message}>
+                        <div
+                          class={`p-2 rounded-lg text-xs font-medium flex items-start gap-1.5 ${
+                            saTestStatus().success
+                              ? 'bg-cat-health-soft text-cat-health'
+                              : 'bg-cat-bills-soft text-cat-bills'
+                          }`}
+                        >
+                          <Show
+                            when={saTestStatus().success}
+                            fallback={<AlertCircle class="w-3.5 h-3.5 shrink-0 mt-0.5" />}
+                          >
+                            <CheckCircle2 class="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                          </Show>
+                          <span class="flex-1">{saTestStatus().message}</span>
+                        </div>
+                      </Show>
+
+                      {/* Tautan langsung ke file Sheet jika sudah ada */}
+                      <Show when={settings().spreadsheetId}>
+                        <div class="pt-0.5 flex items-center justify-between text-[11px]">
+                          <span class="text-warm-mute">Google Sheet:</span>
+                          <a
+                            href={`https://docs.google.com/spreadsheets/d/${settings().spreadsheetId}`}
+                            target="_blank"
+                            class="text-warm-ink hover:underline flex items-center gap-1 font-semibold"
+                          >
+                            <Link2 class="w-3 h-3 text-warm-primary" />
+                            <span>Buka di Sheets</span>
+                          </a>
+                        </div>
+                      </Show>
                     </div>
                   </Show>
                 </div>
-              </Show>
-            </div>
-          </label>
+              </label>
 
-          {/* Opsi 2: Apps Script Webhook */}
-          <label class={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
-            settings().syncMode === 'apps_script'
-              ? 'bg-warm-subtle/70 border-warm-primary'
-              : 'border-warm-border hover:bg-warm-subtle/30'
-          }`}>
-            <input
-              type="radio"
-              name="syncMode"
-              checked={settings().syncMode === 'apps_script'}
-              onChange={() => setSyncMode('apps_script')}
-              class="mt-1 accent-warm-primary"
-            />
-            <div class="flex-1">
-              <span class="text-xs font-bold text-warm-ink block">
-                Custom Webhook (Google Apps Script)
-              </span>
-              <span class="text-[11px] text-warm-mute block mt-0.5">
-                Untuk pengguna tingkat lanjut / tanpa login Google di app: masukkan URL Webhook Apps Script pribadi Anda.
-              </span>
+              {/* Opsi 2: Apps Script Webhook */}
+              <label class={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
+                settings().syncMode === 'apps_script'
+                  ? 'bg-warm-subtle/60 border-warm-primary'
+                  : 'border-warm-border hover:bg-warm-subtle/30'
+              }`}>
+                <input
+                  type="radio"
+                  name="syncMode"
+                  checked={settings().syncMode === 'apps_script'}
+                  onChange={() => setSyncMode('apps_script')}
+                  class="mt-0.5 accent-warm-primary"
+                />
+                <div class="flex-1">
+                  <span class="text-xs font-bold text-warm-ink block">
+                    Custom Webhook (Apps Script)
+                  </span>
 
-              <Show when={settings().syncMode === 'apps_script'}>
-                <div class="mt-3 pt-3 border-t border-warm-border">
-                  <label class="text-[11px] font-semibold text-warm-mute block mb-1">
-                    URL Web App Google Apps Script
-                  </label>
-                  <input
-                    type="url"
-                    placeholder="https://script.google.com/macros/s/.../exec"
-                    value={settings().scriptUrl || ''}
-                    onInput={(e) => setScriptUrl(e.currentTarget.value)}
-                    class="w-full text-xs p-2.5 bg-warm-card border border-warm-border rounded-lg text-warm-ink focus:outline-none focus:border-warm-primary font-mono placeholder:text-warm-faint"
-                  />
+                  <Show when={settings().syncMode === 'apps_script'}>
+                    <div class="mt-2.5 pt-2.5 border-t border-warm-border/70 space-y-2">
+                      <input
+                        type="url"
+                        placeholder="https://script.google.com/macros/s/.../exec"
+                        value={settings().scriptUrl || ''}
+                        onInput={(e) => setScriptUrl(e.currentTarget.value)}
+                        class="w-full text-xs p-2 bg-warm-card border border-warm-border rounded-lg text-warm-ink focus:outline-none focus:border-warm-primary font-mono placeholder:text-warm-faint"
+                      />
 
-                  <div class="flex items-center gap-2 mt-2.5">
-                    <button
-                      type="button"
-                      onClick={handleTestConnection}
-                      disabled={isTesting()}
-                      class="px-3 py-1.5 bg-warm-subtle text-warm-ink border border-warm-border text-xs font-semibold rounded-lg hover:bg-warm-border transition-colors disabled:opacity-50"
-                    >
-                      {isTesting() ? 'Menguji...' : 'Tes Koneksi'}
-                    </button>
-                    <a
-                      href="https://github.com"
-                      target="_blank"
-                      class="text-[11px] text-cat-transport hover:underline flex items-center gap-1"
-                    >
-                      <Link2 class="w-3 h-3" />
-                      Lihat Script Google Sheets
-                    </a>
-                  </div>
+                      <button
+                        type="button"
+                        onClick={handleTestConnection}
+                        disabled={isTesting()}
+                        class="px-3 py-1.5 bg-warm-subtle text-warm-ink border border-warm-border text-xs font-semibold rounded-lg hover:bg-warm-border transition-colors disabled:opacity-50"
+                      >
+                        {isTesting() ? 'Menguji...' : 'Tes Koneksi'}
+                      </button>
 
-                  <Show when={testStatus().message}>
-                    <div
-                      class={`mt-2 p-2 rounded text-xs font-medium ${
-                        testStatus().success
-                          ? 'bg-cat-health-soft text-cat-health'
-                          : 'bg-cat-bills-soft text-cat-bills'
-                      }`}
-                    >
-                      {testStatus().message}
+                      <Show when={testStatus().message}>
+                        <div
+                          class={`p-2 rounded text-xs font-medium ${
+                            testStatus().success
+                              ? 'bg-cat-health-soft text-cat-health'
+                              : 'bg-cat-bills-soft text-cat-bills'
+                          }`}
+                        >
+                          {testStatus().message}
+                        </div>
+                      </Show>
                     </div>
                   </Show>
                 </div>
-              </Show>
+              </label>
             </div>
-          </label>
 
-        </div>
-          {/* Tombol Paksa Sync */}
-          <div class="mt-4 pt-4 border-t border-warm-border flex items-center justify-between">
-            <span class="text-xs text-warm-mute">
-              Status saat ini: <strong class="text-warm-ink capitalize">{syncStatus()}</strong>
-            </span>
-            <button
-              onClick={handleForceSync}
-              disabled={isSyncing()}
-              class="px-3.5 py-1.5 bg-warm-primary text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 hover:bg-warm-primary-dark transition-colors disabled:opacity-50"
-            >
-              <RefreshCw class={`w-3.5 h-3.5 ${isSyncing() ? 'animate-spin' : ''}`} />
-              <span>Sinkronkan Sekarang</span>
-            </button>
+            {/* Tombol Paksa Sync */}
+            <div class="mt-3 pt-3 border-t border-warm-border flex items-center justify-between">
+              <span class="text-[11px] text-warm-mute">
+                Status: <strong class="text-warm-ink capitalize">{syncStatus()}</strong>
+              </span>
+              <button
+                onClick={handleForceSync}
+                disabled={isSyncing()}
+                class="px-3 py-1.5 bg-warm-primary text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 hover:bg-warm-primary-dark transition-colors disabled:opacity-50"
+              >
+                <RefreshCw class={`w-3 h-3 ${isSyncing() ? 'animate-spin' : ''}`} />
+                <span>Sinkron Sekarang</span>
+              </button>
+            </div>
           </div>
-        </div>
-      </Show>
-    </div>
+        </Show>
+      </div>
 
-      {/* PENGATURAN BUDGET & SALDO BERTAHAN HIDUP */}
-      <div class="bg-warm-card border border-warm-border rounded-2xl p-5 mb-5 shadow-[0_1px_3px_rgba(45,40,37,0.03)]">
-        <h3 class="text-sm font-bold text-warm-ink mb-1 flex items-center gap-2">
-          <Calculator class="w-4 h-4 text-warm-primary" />
-          <span>Budget Harian & Saldo Bertahan</span>
+      {/* PENGATURAN BUDGET & PROFIL */}
+      <div class="bg-warm-card border border-warm-border rounded-2xl p-4 mb-3.5 shadow-[0_1px_3px_rgba(45,40,37,0.03)]">
+        <h3 class="text-xs font-bold text-warm-ink mb-3 flex items-center gap-2">
+          <Calculator class="w-3.5 h-3.5 text-warm-primary" />
+          <span>Profil & Budget</span>
         </h3>
-        <p class="text-[11px] text-warm-mute mb-4 leading-normal">
-          Ubah jatah budget harian yang tampil di dashboard Catat Transaksi.
-        </p>
 
-        <div class="space-y-3">
+        <div class="space-y-2.5">
           <div>
             <label class="text-[11px] font-semibold text-warm-mute block mb-1">
-              Nama Panggilan
+              Nama
             </label>
             <input
               type="text"
               placeholder="Yoga"
               value={userNameInput()}
               onInput={(e) => setUserNameInput(e.currentTarget.value)}
-              class="w-full text-xs p-2.5 bg-warm-card border border-warm-border rounded-lg text-warm-ink focus:outline-none focus:border-warm-primary font-medium placeholder:text-warm-faint"
+              class="w-full text-xs p-2 bg-warm-card border border-warm-border rounded-lg text-warm-ink focus:outline-none focus:border-warm-primary font-medium placeholder:text-warm-faint"
             />
           </div>
 
           <div>
             <label class="text-[11px] font-semibold text-warm-mute block mb-1">
-              Gaji / Penghasilan Bulanan
+              Penghasilan Bulanan
             </label>
             <input
               type="text"
@@ -554,7 +511,7 @@ export const SettingsView: Component = () => {
                 const raw = e.currentTarget.value.replace(/\D/g, '');
                 setUserIncomeInput(raw ? new Intl.NumberFormat('id-ID').format(Number(raw)) : '');
               }}
-              class="w-full text-xs p-2.5 bg-warm-card border border-warm-border rounded-lg text-warm-ink focus:outline-none focus:border-warm-primary font-bold placeholder:text-warm-faint"
+              class="w-full text-xs p-2 bg-warm-card border border-warm-border rounded-lg text-warm-ink focus:outline-none focus:border-warm-primary font-bold placeholder:text-warm-faint"
             />
           </div>
 
@@ -572,16 +529,16 @@ export const SettingsView: Component = () => {
                 const newDaily = Math.round(inc / lastDay);
                 await setDailyBudget(newDaily);
               }
-              setBudgetSaveMessage('Pengaturan profil & budget berhasil disimpan!');
-              setTimeout(() => setBudgetSaveMessage(''), 3000);
+              setBudgetSaveMessage('Berhasil disimpan');
+              setTimeout(() => setBudgetSaveMessage(''), 2500);
             }}
-            class="w-full mt-1 px-4 py-2 bg-warm-primary text-white text-xs font-semibold rounded-lg shadow-sm hover:bg-warm-primary-dark transition-colors flex items-center justify-center gap-1.5"
+            class="w-full mt-1 py-2 px-3 bg-warm-primary text-white text-xs font-semibold rounded-lg hover:bg-warm-primary-dark transition-colors flex items-center justify-center"
           >
-            <span>Simpan Pengaturan</span>
+            <span>Simpan</span>
           </button>
 
           <Show when={budgetSaveMessage()}>
-            <div class="p-2 bg-cat-health-soft text-cat-health rounded-lg text-[11px] font-semibold text-center">
+            <div class="p-1.5 bg-cat-health-soft text-cat-health rounded-lg text-[11px] font-semibold text-center">
               {budgetSaveMessage()}
             </div>
           </Show>
@@ -589,21 +546,16 @@ export const SettingsView: Component = () => {
       </div>
 
       {/* KELOLA KATEGORI */}
-      <div class="bg-warm-card border border-warm-border rounded-2xl p-5 mb-5 shadow-[0_1px_3px_rgba(45,40,37,0.03)]">
-        <div class="flex items-center justify-between mb-3">
-          <div>
-            <h3 class="text-sm font-bold text-warm-ink flex items-center gap-2">
-              <Tag class="w-4 h-4 text-warm-primary" />
-              Kelola Kategori
-            </h3>
-            <p class="text-[11px] text-warm-mute mt-0.5">
-              Kustomisasi daftar kategori pengeluaran Anda
-            </p>
-          </div>
+      <div class="bg-warm-card border border-warm-border rounded-2xl p-4 mb-3.5 shadow-[0_1px_3px_rgba(45,40,37,0.03)]">
+        <div class="flex items-center justify-between mb-2.5">
+          <h3 class="text-xs font-bold text-warm-ink flex items-center gap-2">
+            <Tag class="w-3.5 h-3.5 text-warm-primary" />
+            <span>Kategori</span>
+          </h3>
           <button
             type="button"
             onClick={() => setShowAddCategoryModal(true)}
-            class="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-warm-primary text-white text-xs font-semibold hover:bg-warm-primary-dark transition-colors shadow-xs"
+            class="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-warm-primary text-white text-xs font-semibold hover:bg-warm-primary-dark transition-colors"
           >
             <Plus class="w-3.5 h-3.5" />
             <span>Tambah</span>
@@ -614,18 +566,18 @@ export const SettingsView: Component = () => {
           <p class="text-xs text-cat-bills font-medium mb-2">{categoryDeleteError()}</p>
         </Show>
 
-        <div class="space-y-2 mt-3 max-h-60 overflow-y-auto pr-1">
+        <div class="space-y-1.5 max-h-60 overflow-y-auto pr-1">
           <For each={categories()}>
             {(cat) => (
-              <div class="flex items-center justify-between p-2.5 bg-warm-canvas/60 border border-warm-border/60 rounded-xl">
-                <div class="flex items-center gap-2.5">
+              <div class="flex items-center justify-between p-2 bg-warm-canvas/60 border border-warm-border/60 rounded-xl">
+                <div class="flex items-center gap-2">
                   <div
-                    class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                    class="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
                     style={{ 'background-color': cat.softColor }}
                   >
                     <CategoryIcon
                       name={cat.icon}
-                      class="w-3.5 h-3.5"
+                      class="w-3 h-3"
                       style={{ color: cat.color }}
                     />
                   </div>
@@ -644,7 +596,7 @@ export const SettingsView: Component = () => {
                     <button
                       type="button"
                       onClick={() => handleDeleteCategory(cat)}
-                      class="p-1.5 text-warm-mute hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                      class="p-1 text-warm-mute hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                       title="Hapus Kategori"
                     >
                       <Trash2 class="w-3.5 h-3.5" />
@@ -658,27 +610,24 @@ export const SettingsView: Component = () => {
       </div>
 
       {/* MANAJEMEN DATA & CADANGAN */}
-      <div class="bg-warm-card border border-warm-border rounded-2xl p-5 mb-5 shadow-[0_1px_3px_rgba(45,40,37,0.03)]">
-        <h3 class="text-sm font-bold text-warm-ink mb-3 flex items-center gap-2">
-          <HardDrive class="w-4 h-4 text-warm-primary" />
-          Cadangan & Kelola Data
+      <div class="bg-warm-card border border-warm-border rounded-2xl p-4 mb-3.5 shadow-[0_1px_3px_rgba(45,40,37,0.03)]">
+        <h3 class="text-xs font-bold text-warm-ink mb-2.5 flex items-center gap-2">
+          <HardDrive class="w-3.5 h-3.5 text-warm-primary" />
+          <span>Data & Cadangan</span>
         </h3>
 
         <button
           type="button"
           onClick={handleExportCsv}
-          class="w-full flex items-center justify-center gap-2 p-3 rounded-xl border border-warm-border bg-warm-subtle/70 hover:bg-warm-subtle text-xs font-bold text-warm-ink transition-all active:scale-[0.98] shadow-sm"
+          class="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl border border-warm-border bg-warm-subtle/50 hover:bg-warm-subtle text-xs font-semibold text-warm-ink transition-all active:scale-[0.98]"
         >
-          <FileSpreadsheet class="w-4 h-4 text-warm-primary" />
-          <span>Ekspor Data ke Sheet (CSV)</span>
+          <FileSpreadsheet class="w-3.5 h-3.5 text-warm-primary" />
+          <span>Ekspor Transaksi (CSV)</span>
         </button>
-        <p class="text-[10.5px] text-warm-mute mt-1.5 text-center leading-normal">
-          File .csv kompatibel langsung dengan Google Sheets, Microsoft Excel, dan Numbers.
-        </p>
 
         <Show when={csvExportStatus().message}>
           <div
-            class={`mt-2.5 p-2 rounded-xl text-[11px] font-semibold text-center animate-fadeIn ${
+            class={`mt-2 p-1.5 rounded-xl text-[11px] font-semibold text-center animate-fadeIn ${
               csvExportStatus().success
                 ? 'bg-cat-health-soft text-cat-health'
                 : 'bg-cat-bills-soft text-cat-bills'
@@ -688,13 +637,13 @@ export const SettingsView: Component = () => {
           </div>
         </Show>
 
-        <div class="mt-4 pt-4 border-t border-warm-border">
+        <div class="mt-3 pt-3 border-t border-warm-border">
           <button
             type="button"
             onClick={handleOpenClearModal}
-            class="w-full flex items-center justify-center gap-1.5 p-2.5 rounded-xl border border-red-200 text-red-500 hover:bg-red-50 text-xs font-semibold transition-colors active:scale-[0.98]"
+            class="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl border border-red-200 text-red-500 hover:bg-red-50 text-xs font-semibold transition-colors active:scale-[0.98]"
           >
-            <Trash2 class="w-4 h-4" />
+            <Trash2 class="w-3.5 h-3.5" />
             <span>Hapus Semua Data</span>
           </button>
         </div>
