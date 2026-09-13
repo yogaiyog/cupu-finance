@@ -1,4 +1,4 @@
-import { Component } from 'solid-js';
+import { Component, Show } from 'solid-js';
 import { Expense } from '../types';
 import { formatRupiah, requestDeleteExpense } from '../stores/expenseStore';
 import { getCategoryConfig } from '../stores/categoryStore';
@@ -18,24 +18,26 @@ export const ExpenseItem: Component<ExpenseItemProps> = (props) => {
   };
 
   return (
-    <div class="flex items-center justify-between p-3.5 bg-warm-card border border-warm-border rounded-xl mb-2 shadow-[0_1px_2px_rgba(45,40,37,0.03)] hover:border-warm-primary transition-colors">
-      <div class="flex items-center gap-3">
+    <div class="flex items-center justify-between p-3 bg-warm-card border border-warm-border rounded-xl mb-1.5 shadow-[0_1px_2px_rgba(45,40,37,0.02)] hover:border-warm-primary transition-colors">
+      <div class="flex items-center gap-2.5">
         {/* Ikon Kategori dengan soft background */}
         <div
-          class="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+          class="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
           style={{ 'background-color': config().softColor }}
         >
-          <CategoryIcon name={config().icon} class="w-4 h-4" style={{ color: config().color }} />
+          <CategoryIcon name={config().icon} class="w-3.5 h-3.5" style={{ color: config().color }} />
         </div>
 
         {/* Keterangan */}
         <div class="flex flex-col">
-          <span class="text-sm font-semibold text-warm-ink">
+          <span class="text-xs font-semibold text-warm-ink">
             {props.expense.category}
           </span>
-          <span class="text-xs text-warm-mute line-clamp-1">
-            {props.expense.note || 'Tanpa catatan'}
-          </span>
+          <Show when={props.expense.note}>
+            <span class="text-[11px] text-warm-mute line-clamp-1">
+              {props.expense.note}
+            </span>
+          </Show>
         </div>
       </div>
 

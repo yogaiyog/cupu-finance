@@ -11,24 +11,13 @@ import {
 } from '../stores/expenseStore';
 import { ExpenseItem } from './ExpenseItem';
 import { settings } from '../stores/settingsStore';
-import { getCategoryConfig } from '../stores/categoryStore';
-import { CategoryIcon } from './CategoryIcon';
-import {
-  ChevronLeft,
-  ChevronRight,
-  PieChart,
-  ChevronDown,
-  ChevronUp,
-  Search,
-  Calendar,
-  Inbox,
-} from 'lucide-solid';
+import { ChevronLeft, ChevronRight, ChevronDown, Search } from 'lucide-solid';
 
 export const MonthlyRecap: Component = () => {
   const [searchQuery, setSearchQuery] = createSignal('');
   const [expandedDates, setExpandedDates] = createSignal<string[]>([]);
 
-  // Format tampilan bulan: "September 2026"
+  // Format bulan: "September 2026"
   const formattedMonthTitle = () => {
     const [year, month] = selectedMonth().split('-').map(Number);
     const dateObj = new Date(year, month - 1, 1);
@@ -73,91 +62,87 @@ export const MonthlyRecap: Component = () => {
 
   return (
     <div class="w-full pb-8">
-      {/* SELECTOR BULAN */}
-      <div class="flex items-center justify-between bg-warm-card border border-warm-border rounded-2xl p-3 mb-4 shadow-[0_1px_3px_rgba(45,40,37,0.03)]">
+      {/* SELECTOR BULAN MINIMALIS */}
+      <div class="flex items-center justify-between px-1 mb-3">
         <button
           onClick={() => changeMonth(-1)}
-          class="p-2 text-warm-mute hover:text-warm-ink hover:bg-warm-subtle rounded-xl transition-all active:scale-95"
-          title="Bulan sebelumnya"
+          class="p-1.5 text-warm-mute hover:text-warm-ink hover:bg-warm-subtle/70 rounded-full transition-all active:scale-95"
+          aria-label="Bulan sebelumnya"
         >
-          <ChevronLeft class="w-5 h-5" />
+          <ChevronLeft class="w-4 h-4" />
         </button>
 
-        <h2 class="text-base font-bold text-warm-ink capitalize tracking-tight">
+        <h2 class="text-sm font-bold text-warm-ink capitalize tracking-tight">
           {formattedMonthTitle()}
         </h2>
 
         <button
           onClick={() => changeMonth(1)}
-          class="p-2 text-warm-mute hover:text-warm-ink hover:bg-warm-subtle rounded-xl transition-all active:scale-95"
-          title="Bulan berikutnya"
+          class="p-1.5 text-warm-mute hover:text-warm-ink hover:bg-warm-subtle/70 rounded-full transition-all active:scale-95"
+          aria-label="Bulan berikutnya"
         >
-          <ChevronRight class="w-5 h-5" />
+          <ChevronRight class="w-4 h-4" />
         </button>
       </div>
 
-      {/* KARTU RINGKASAN TOTAL */}
-      <div class="bg-warm-card border border-warm-border rounded-2xl p-5 mb-5 shadow-[0_1px_3px_rgba(45,40,37,0.03)]">
-        <span class="text-xs font-semibold text-warm-mute uppercase tracking-wider block mb-1">
-          Total Pengeluaran
-        </span>
-        <div class="text-3xl font-extrabold text-warm-ink tracking-tight tabular-nums mb-3">
+      {/* KARTU TOTAL */}
+      <div class="bg-warm-card border border-warm-border rounded-2xl p-4 mb-4 text-center shadow-[0_1px_3px_rgba(45,40,37,0.02)]">
+        <div class="text-2xl font-extrabold text-warm-ink tracking-tight tabular-nums">
           {formatRupiah(totalMonthlyExpense())}
         </div>
 
-        <div class="pt-3 border-t border-warm-border/60 flex items-center justify-between text-xs text-warm-mute">
-          <span>Rata-rata per hari:</span>
-          <span class="font-semibold text-warm-ink tabular-nums">
-            {formatRupiah(dailyAverageExpense())} / hari
-          </span>
-        </div>
-
-        <Show when={settings().dailyBudget}>
-          <div class="pt-1.5 flex items-center justify-between text-xs">
-            <span class="text-warm-mute">Target batas harian:</span>
-            <span class="font-semibold text-warm-primary tabular-nums">
-              {formatRupiah(settings().dailyBudget!)} / hari
+        <div class="mt-2.5 pt-2.5 border-t border-warm-border/50 flex items-center justify-around text-xs">
+          <div>
+            <span class="text-[10px] text-warm-faint block uppercase font-medium">Rata-rata</span>
+            <span class="font-semibold text-warm-mute tabular-nums">
+              {formatRupiah(dailyAverageExpense())}
             </span>
           </div>
-        </Show>
+
+          <Show when={settings().dailyBudget}>
+            <div class="w-px h-5 bg-warm-border/50" />
+            <div>
+              <span class="text-[10px] text-warm-faint block uppercase font-medium">Batas Harian</span>
+              <span class="font-semibold text-warm-primary tabular-nums">
+                {formatRupiah(settings().dailyBudget!)}
+              </span>
+            </div>
+          </Show>
+        </div>
       </div>
 
-      {/* BREAKDOWN PER KATEGORI (CSS BAR RINGAN) */}
+      {/* KATEGORI BREAKDOWN (BAR SEGMENTED & CHIPS) */}
       <Show when={totalMonthlyExpense() > 0}>
-        <div class="bg-warm-card border border-warm-border rounded-2xl p-5 mb-6 shadow-[0_1px_3px_rgba(45,40,37,0.03)]">
-          <div class="flex items-center gap-2 mb-4">
-            <PieChart class="w-4 h-4 text-warm-mute" />
-            <h3 class="text-sm font-bold text-warm-ink">Rincian Kategori</h3>
-          </div>
-
-          <div class="space-y-3.5">
+        <div class="bg-warm-card border border-warm-border rounded-2xl p-4 mb-4 shadow-[0_1px_3px_rgba(45,40,37,0.02)]">
+          {/* Segmented bar */}
+          <div class="w-full h-2 bg-warm-subtle rounded-full overflow-hidden flex mb-3">
             <For each={categoryBreakdown().filter((c) => c.total > 0)}>
               {(item) => (
-                <div>
-                  <div class="flex items-center justify-between text-xs font-semibold mb-1">
-                    <span class="text-warm-ink flex items-center gap-1.5">
-                      <CategoryIcon
-                        name={getCategoryConfig(item.category).icon}
-                        class="w-3.5 h-3.5 shrink-0"
-                        style={{ color: item.color }}
-                      />
-                      <span>{item.category}</span>
-                    </span>
-                    <span class="text-warm-mute tabular-nums">
-                      {formatRupiah(item.total)} ({item.percentage}%)
-                    </span>
-                  </div>
+                <div
+                  style={{
+                    width: `${item.percentage}%`,
+                    'background-color': item.color,
+                  }}
+                  class="h-full first:rounded-l-full last:rounded-r-full transition-all duration-300"
+                  title={`${item.category}: ${item.percentage}%`}
+                />
+              )}
+            </For>
+          </div>
 
-                  {/* Progress Bar Proporsional */}
-                  <div class="w-full h-2 bg-warm-subtle rounded-full overflow-hidden">
-                    <div
-                      class="h-full rounded-full transition-all duration-500 ease-out"
-                      style={{
-                        width: `${item.percentage}%`,
-                        'background-color': item.color,
-                      }}
-                    ></div>
-                  </div>
+          {/* Chips Ringkas */}
+          <div class="flex flex-wrap gap-1.5">
+            <For each={categoryBreakdown().filter((c) => c.total > 0)}>
+              {(item) => (
+                <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-warm-subtle/50 text-xs">
+                  <span
+                    class="w-2 h-2 rounded-full shrink-0"
+                    style={{ 'background-color': item.color }}
+                  />
+                  <span class="font-medium text-warm-ink">{item.category}</span>
+                  <span class="text-warm-mute tabular-nums font-semibold">
+                    {item.percentage}%
+                  </span>
                 </div>
               )}
             </For>
@@ -165,89 +150,83 @@ export const MonthlyRecap: Component = () => {
         </div>
       </Show>
 
-      {/* RIWAYAT TRANSAKSI HARIAN (SUM PER HARI) */}
+      {/* RIWAYAT HARIAN */}
       <div class="mt-2">
         <div class="flex items-center justify-between px-1 mb-2">
-          <h3 class="text-xs font-bold text-warm-mute uppercase tracking-wider">
-            Riwayat Harian (Total per Hari)
-          </h3>
-          <span class="text-xs text-warm-mute font-medium">
-            {filteredDailyGroups().length} hari
+          <span class="text-xs font-bold text-warm-mute uppercase tracking-wider">
+            Riwayat
           </span>
-        </div>
 
-        {/* Input Pencarian Transaksi */}
-        <div class="relative mb-3">
-          <Search class="w-4 h-4 text-warm-mute absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-          <input
-            type="text"
-            placeholder="Cari tanggal, kategori, atau catatan..."
-            value={searchQuery()}
-            onInput={(e) => setSearchQuery(e.currentTarget.value)}
-            class="w-full bg-warm-card border border-warm-border rounded-xl pl-9 pr-3.5 py-2 text-xs text-warm-ink placeholder:text-warm-faint focus:outline-none focus:border-warm-primary transition-colors"
-          />
+          {/* Search Box Ringkas */}
+          <div class="relative flex items-center">
+            <Search class="w-3.5 h-3.5 text-warm-mute absolute left-2.5 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Cari..."
+              value={searchQuery()}
+              onInput={(e) => setSearchQuery(e.currentTarget.value)}
+              class="w-24 focus:w-36 transition-all bg-warm-card border border-warm-border rounded-full pl-7 pr-5 py-1 text-xs text-warm-ink placeholder:text-warm-faint focus:outline-none focus:border-warm-primary"
+            />
+            <Show when={searchQuery()}>
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                class="absolute right-2 text-warm-mute hover:text-warm-ink text-xs font-bold leading-none"
+              >
+                ×
+              </button>
+            </Show>
+          </div>
         </div>
 
         <Show when={isLoadingExpenses()}>
-          <div class="py-8 text-center text-warm-mute text-sm">
-            Memuat riwayat pengeluaran...
+          <div class="py-6 text-center text-warm-mute text-xs">
+            Memuat...
           </div>
         </Show>
 
         <Show when={!isLoadingExpenses() && filteredDailyGroups().length === 0}>
-          <div class="flex flex-col items-center justify-center py-8 px-4 text-center bg-warm-card/60 border border-dashed border-warm-border rounded-2xl">
-            <div class="p-3 rounded-full bg-warm-subtle text-warm-mute mb-2">
-              <Inbox class="w-5 h-5" />
-            </div>
-            <p class="text-xs font-medium text-warm-ink">
-              {searchQuery() ? 'Tidak ada transaksi yang cocok' : 'Belum ada pengeluaran di bulan ini'}
-            </p>
+          <div class="py-8 text-center text-xs text-warm-mute">
+            {searchQuery() ? 'Tidak ada yang cocok' : 'Belum ada transaksi'}
           </div>
         </Show>
 
-        <div class="space-y-2.5">
+        <div class="space-y-1.5">
           <For each={filteredDailyGroups()}>
             {(group) => {
               const isExpanded = () => expandedDates().includes(group.date);
               return (
-                <div class="bg-warm-card border border-warm-border rounded-2xl overflow-hidden transition-all shadow-[0_1px_3px_rgba(45,40,37,0.03)]">
-                  {/* Kartu Ringkasan Harian (Sum) */}
+                <div class="bg-warm-card border border-warm-border rounded-xl overflow-hidden transition-all shadow-[0_1px_2px_rgba(45,40,37,0.02)]">
+                  {/* Baris Ringkasan Harian */}
                   <button
                     type="button"
                     onClick={() => toggleExpandDate(group.date)}
-                    class="w-full p-3.5 flex items-center justify-between text-left hover:bg-warm-subtle/30 transition-colors active:scale-[0.99]"
+                    class="w-full px-3.5 py-2.5 flex items-center justify-between text-left hover:bg-warm-subtle/30 transition-colors active:scale-[0.99]"
                   >
-                    <div class="flex items-center gap-2.5">
-                      <div class="p-2 rounded-xl bg-warm-subtle text-warm-ink shrink-0">
-                        <Calendar class="w-4 h-4 text-warm-mute" />
-                      </div>
-                      <div>
-                        <div class="text-xs font-bold text-warm-ink">
-                          {group.formattedDate}
-                        </div>
-                        <div class="text-[11px] text-warm-mute">
-                          {group.items.length} transaksi
-                        </div>
-                      </div>
+                    <div class="flex items-baseline gap-2">
+                      <span class="text-xs font-bold text-warm-ink">
+                        {group.formattedDate}
+                      </span>
+                      <span class="text-[11px] text-warm-faint">
+                        ({group.items.length})
+                      </span>
                     </div>
 
                     <div class="flex items-center gap-2">
-                      <span class="text-sm font-extrabold text-warm-ink tabular-nums">
+                      <span class="text-xs font-bold text-warm-ink tabular-nums">
                         {formatRupiah(group.totalDay)}
                       </span>
-                      <div class="text-warm-mute p-0.5">
-                        {isExpanded() ? (
-                          <ChevronUp class="w-4 h-4" />
-                        ) : (
-                          <ChevronDown class="w-4 h-4" />
-                        )}
-                      </div>
+                      <ChevronDown
+                        class={`w-3.5 h-3.5 text-warm-faint transition-transform duration-200 ${
+                          isExpanded() ? 'rotate-180 text-warm-ink' : ''
+                        }`}
+                      />
                     </div>
                   </button>
 
                   {/* Detail Item Transaksi jika dibuka */}
                   <Show when={isExpanded()}>
-                    <div class="px-3 pb-3 pt-1 border-t border-warm-border/60 bg-warm-card/60">
+                    <div class="px-2.5 pb-2.5 pt-1 border-t border-warm-border/50 bg-warm-subtle/20 space-y-1">
                       <For each={group.items}>
                         {(expense) => <ExpenseItem expense={expense} />}
                       </For>
