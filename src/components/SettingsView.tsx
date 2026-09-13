@@ -316,8 +316,8 @@ export const SettingsView: Component = () => {
                           placeholder="Atau tempel teks JSON di sini..."
                           value={saJsonInput()}
                           onInput={(e) => setSaJsonInput(e.currentTarget.value)}
-                          rows={2}
-                          class="w-full text-[11px] p-2 bg-warm-card border border-warm-border rounded-lg text-warm-ink focus:outline-none focus:border-warm-primary font-mono placeholder:text-warm-faint resize-none"
+                          rows={6}
+                          class="w-full text-[11px] p-2.5 bg-warm-card border border-warm-border rounded-xl text-warm-ink focus:outline-none focus:border-warm-primary font-mono placeholder:text-warm-faint min-h-[140px] resize-y"
                         ></textarea>
                       </div>
 
