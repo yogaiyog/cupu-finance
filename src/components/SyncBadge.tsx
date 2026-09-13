@@ -8,7 +8,7 @@ export const SyncBadge: Component = () => {
     await loadExpensesForSelectedMonth();
   };
 
-  // Hanya berwarna BIRU jika akun cloud terhubung dan seluruh transaksi sukses tersinkron
+  // Berwarna hijau sage jika akun cloud terhubung dan seluruh transaksi sukses tersinkron
   const isConfigured = () => {
     const provider = getActiveProvider();
     return !!(provider && provider.isConfigured());
@@ -35,7 +35,7 @@ export const SyncBadge: Component = () => {
       <span
         class={`w-2.5 h-2.5 rounded-full transition-colors duration-300 ${
           isCloudSynced()
-            ? 'bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.5)]'
+            ? 'bg-sync-synced shadow-[0_0_6px_rgba(90,158,120,0.5)]'
             : 'bg-amber-400 animate-pulse shadow-[0_0_6px_rgba(251,191,36,0.5)]'
         }`}
       />
