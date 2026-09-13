@@ -154,27 +154,6 @@ export const ExpenseForm: Component = () => {
                 </button>
               </Show>
             </div>
-
-            <Show when={showArrows()}>
-              <div class="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => scrollCategories('left')}
-                  class="p-1 rounded-full bg-warm-subtle text-warm-ink hover:bg-warm-primary/30 transition-colors active:scale-95"
-                  aria-label="Kategori Sebelumnya"
-                >
-                  <ChevronLeft class="w-3.5 h-3.5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => scrollCategories('right')}
-                  class="p-1 rounded-full bg-warm-subtle text-warm-ink hover:bg-warm-primary/30 transition-colors active:scale-95"
-                  aria-label="Kategori Selanjutnya"
-                >
-                  <ChevronRight class="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </Show>
           </div>
         </div>
 
@@ -211,6 +190,28 @@ export const ExpenseForm: Component = () => {
             )}
           </For>
         </div>
+
+        {/* Arrow navigasi di bawah buttons jika > 9 kategori */}
+        <Show when={showArrows()}>
+          <div class="flex items-center justify-center gap-2 mt-2">
+            <button
+              type="button"
+              onClick={() => scrollCategories('left')}
+              class="p-1 rounded-full bg-warm-subtle text-warm-ink hover:bg-warm-primary/30 transition-colors active:scale-95"
+              aria-label="Kategori Sebelumnya"
+            >
+              <ChevronLeft class="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollCategories('right')}
+              class="p-1 rounded-full bg-warm-subtle text-warm-ink hover:bg-warm-primary/30 transition-colors active:scale-95"
+              aria-label="Kategori Selanjutnya"
+            >
+              <ChevronRight class="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </Show>
       </div>
 
       {/* CATATAN OPSIONAL */}
