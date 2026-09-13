@@ -11,11 +11,35 @@ import {
 } from '../stores/expenseStore';
 import { ExpenseItem } from './ExpenseItem';
 import { settings } from '../stores/settingsStore';
-import { ChevronLeft, ChevronRight, ChevronDown, Search } from 'lucide-solid';
+import { syncStatus } from '../services/sync/syncManager';
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  Search,
+  FileSpreadsheet,
+  ExternalLink,
+} from 'lucide-solid';
 
 export const MonthlyRecap: Component = () => {
   const [searchQuery, setSearchQuery] = createSignal('');
   const [expandedDates, setExpandedDates] = createSignal<string[]>([]);
+
+  // Tautan Google Sheet
+  const getSpreadsheetUrl = () => {
+    const raw = settings().spreadsheetId?.trim();
+    if (!raw) return null;
+    if (raw.startsWith('http://') || raw.startsWith('https://')) {
+      return raw;
+    }
+    return `https://docs.google.com/spreadsheets/d/${raw}/edit`;
+  };
+
+  const isSynced = () => {
+    return Boolean(
+      getSpreadsheetUrl() && (settings().lastSyncTimestamp > 0 || syncStatus() === 'synced')
+    );
+  };
 
   // Format bulan: "September 2026"
   const formattedMonthTitle = () => {
@@ -147,6 +171,24 @@ export const MonthlyRecap: Component = () => {
               )}
             </For>
           </div>
+        </div>
+      </Show>
+
+      {/* TOMBOL BUKA GOOGLE SHEET */}
+      <Show when={isSynced()}>
+        <div class="mb-4">
+          <a
+            href={getSpreadsheetUrl() || '#'}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="w-full py-2.5 px-3.5 bg-warm-card hover:bg-warm-subtle/50 border border-warm-border rounded-xl flex items-center justify-between text-xs font-semibold text-warm-ink transition-colors shadow-[0_1px_2px_rgba(45,40,37,0.02)] active:scale-[0.99]"
+          >
+            <div class="flex items-center gap-2">
+              <FileSpreadsheet class="w-4 h-4 text-sync-synced" />
+              <span>Buka Google Sheet</span>
+            </div>
+            <ExternalLink class="w-3.5 h-3.5 text-warm-mute" />
+          </a>
         </div>
       </Show>
 

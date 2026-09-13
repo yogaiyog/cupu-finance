@@ -18,39 +18,45 @@ const [selectedMonth, setSelectedMonth] = createSignal<string>(getCurrentYearMon
 const [expenses, setExpenses] = createSignal<Expense[]>([]);
 const [isLoadingExpenses, setIsLoadingExpenses] = createSignal<boolean>(false);
 
-// Konfigurasi Kategori & Warna Soft
+// Konfigurasi Kategori & Warna Soft (Warmgrey)
 export const CATEGORY_CONFIG: Record<
   ExpenseCategory,
   { label: string; color: string; softColor: string; icon: string }
 > = {
   Makanan: {
     label: 'Makanan',
-    color: '#d48b6a',
-    softColor: '#faeae1',
+    color: '#6b635b',
+    softColor: '#e8e4df',
     icon: 'Utensils',
   },
+  Transportasi: {
+    label: 'Transportasi',
+    color: '#6b635b',
+    softColor: '#e8e4df',
+    icon: 'Car',
+  },
   Transport: {
-    label: 'Transport',
-    color: '#7097c2',
-    softColor: '#e8eff7',
+    label: 'Transportasi',
+    color: '#6b635b',
+    softColor: '#e8e4df',
     icon: 'Car',
   },
   Belanja: {
     label: 'Belanja',
-    color: '#a688b8',
-    softColor: '#f3edf7',
+    color: '#6b635b',
+    softColor: '#e8e4df',
     icon: 'ShoppingBag',
   },
   Tagihan: {
     label: 'Tagihan',
-    color: '#c47171',
-    softColor: '#fae8e8',
+    color: '#6b635b',
+    softColor: '#e8e4df',
     icon: 'Receipt',
   },
   Hiburan: {
     label: 'Hiburan',
-    color: '#c77d99',
-    softColor: '#f7eaef',
+    color: '#6b635b',
+    softColor: '#e8e4df',
     icon: 'Film',
   },
   Lainnya: {

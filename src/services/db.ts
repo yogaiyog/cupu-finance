@@ -2,11 +2,11 @@ import Dexie, { Table } from 'dexie';
 import { Expense, Category } from '../types';
 
 export const DEFAULT_CATEGORIES: Category[] = [
-  { id: 'cat_makanan', name: 'Makanan', color: '#d48b6a', softColor: '#faeae1', icon: 'Utensils', isDefault: true, order: 1 },
-  { id: 'cat_transport', name: 'Transportasi', color: '#7097c2', softColor: '#e8eff7', icon: 'Car', isDefault: true, order: 2 },
-  { id: 'cat_belanja', name: 'Belanja', color: '#a688b8', softColor: '#f3edf7', icon: 'ShoppingBag', isDefault: true, order: 3 },
-  { id: 'cat_tagihan', name: 'Tagihan', color: '#c47171', softColor: '#fae8e8', icon: 'Receipt', isDefault: true, order: 4 },
-  { id: 'cat_hiburan', name: 'Hiburan', color: '#c77d99', softColor: '#f7eaef', icon: 'Film', isDefault: true, order: 5 },
+  { id: 'cat_makanan', name: 'Makanan', color: '#6b635b', softColor: '#e8e4df', icon: 'Utensils', isDefault: true, order: 1 },
+  { id: 'cat_transport', name: 'Transportasi', color: '#6b635b', softColor: '#e8e4df', icon: 'Car', isDefault: true, order: 2 },
+  { id: 'cat_belanja', name: 'Belanja', color: '#6b635b', softColor: '#e8e4df', icon: 'ShoppingBag', isDefault: true, order: 3 },
+  { id: 'cat_tagihan', name: 'Tagihan', color: '#6b635b', softColor: '#e8e4df', icon: 'Receipt', isDefault: true, order: 4 },
+  { id: 'cat_hiburan', name: 'Hiburan', color: '#6b635b', softColor: '#e8e4df', icon: 'Film', isDefault: true, order: 5 },
 ];
 
 export class CupuDatabase extends Dexie {
@@ -48,6 +48,17 @@ export class CupuDatabase extends Dexie {
     try {
       await this.categories.delete('cat_lainnya');
     } catch {}
+
+    // Update kategori default ke warmgrey jika masih menggunakan warna lama
+    for (const def of DEFAULT_CATEGORIES) {
+      try {
+        const existing = await this.categories.get(def.id);
+        if (existing && (existing.color !== def.color || existing.softColor !== def.softColor)) {
+          await this.categories.update(def.id, { color: def.color, softColor: def.softColor });
+        }
+      } catch {}
+    }
+
     const cats = await this.categories.toArray();
     if (cats.length === 0) {
       await this.categories.bulkPut(DEFAULT_CATEGORIES);

@@ -15,7 +15,7 @@ describe('categoryStore', () => {
   it('memuat kategori default', () => {
     expect(categories().length).toBeGreaterThanOrEqual(5);
     const config = getCategoryConfig('Makanan');
-    expect(config.color).toBe('#d48b6a');
+    expect(config.color).toBe('#6b635b');
   });
 
   it('fallback untuk kategori tidak dikenal', () => {

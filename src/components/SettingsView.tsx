@@ -34,6 +34,7 @@ import {
   X,
   Tag,
   Plus,
+  Upload,
 } from 'lucide-solid';
 import { categories, removeCategory } from '../stores/categoryStore';
 import { CategoryIcon } from './CategoryIcon';
@@ -64,6 +65,43 @@ export const SettingsView: Component = () => {
   const [isSaTesting, setIsSaTesting] = createSignal(false);
   const [copiedEmail, setCopiedEmail] = createSignal(false);
   const [showGuideModal, setShowGuideModal] = createSignal(false);
+  let fileInputRef: HTMLInputElement | undefined;
+
+  const handleFileUpload = (e: Event) => {
+    const target = e.target as HTMLInputElement;
+    const file = target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const content = event.target?.result as string;
+      if (content) {
+        try {
+          const parsed = JSON.parse(content);
+          if (!parsed.client_email || !parsed.private_key) {
+            setSaTestStatus({
+              success: false,
+              message: 'File JSON tidak valid: harus memiliki "client_email" dan "private_key".',
+            });
+            return;
+          }
+          setSaJsonInput(content);
+          await setServiceAccountConfig(content, sheetIdInput());
+          setSaTestStatus({
+            success: true,
+            message: `File JSON berhasil diunggah untuk: ${parsed.client_email}`,
+          });
+        } catch (err: any) {
+          setSaTestStatus({
+            success: false,
+            message: 'Gagal membaca file JSON: ' + err.message,
+          });
+        }
+      }
+    };
+    reader.readAsText(file);
+    target.value = '';
+  };
 
   // State Kelola Kategori
   const [showAddCategoryModal, setShowAddCategoryModal] = createSignal(false);
@@ -258,12 +296,12 @@ export const SettingsView: Component = () => {
 
               <Show when={settings().syncMode === 'service_account'}>
                 <div class="mt-3 pt-3 border-t border-warm-border space-y-3">
-                  {/* Kolom Input JSON */}
+                  {/* Kolom Input & Upload JSON */}
                   <div>
-                    <div class="flex items-center justify-between mb-1">
+                    <div class="flex items-center justify-between mb-2">
                       <label class="text-[11px] font-semibold text-warm-mute flex items-center gap-1.5">
                         <KeyRound class="w-3.5 h-3.5 text-warm-primary" />
-                        <span>Copas Isi Kunci JSON Service Account</span>
+                        <span>Kunci JSON Service Account</span>
                       </label>
                       <button
                         type="button"
@@ -274,11 +312,31 @@ export const SettingsView: Component = () => {
                         <span>Cara Mendapatkannya</span>
                       </button>
                     </div>
+
+                    {/* Tombol Upload File JSON */}
+                    <div class="mb-2">
+                      <input
+                        type="file"
+                        accept=".json,application/json"
+                        ref={fileInputRef}
+                        onChange={handleFileUpload}
+                        class="hidden"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef?.click()}
+                        class="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl border border-dashed border-warm-primary bg-warm-card hover:bg-warm-subtle/50 text-warm-ink text-xs font-semibold transition-all active:scale-[0.99] shadow-sm"
+                      >
+                        <Upload class="w-4 h-4 text-warm-primary" />
+                        <span>Upload File JSON Service Account</span>
+                      </button>
+                    </div>
+
                     <textarea
-                      placeholder={'{\n  "type": "service_account",\n  "client_email": "...",\n  "private_key": "..."\n}'}
+                      placeholder={'Atau copas isi JSON di sini:\n{\n  "type": "service_account",\n  "client_email": "...",\n  "private_key": "..."\n}'}
                       value={saJsonInput()}
                       onInput={(e) => setSaJsonInput(e.currentTarget.value)}
-                      rows={4}
+                      rows={3}
                       class="w-full text-[11px] p-2.5 bg-warm-card border border-warm-border rounded-lg text-warm-ink focus:outline-none focus:border-warm-primary font-mono placeholder:text-warm-faint resize-y"
                     ></textarea>
                   </div>

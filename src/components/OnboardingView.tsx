@@ -25,6 +25,7 @@ import {
   HelpCircle,
   Calendar,
   Sparkles,
+  Upload,
 } from 'lucide-solid';
 
 interface OnboardingViewProps {
@@ -54,6 +55,33 @@ export const OnboardingView: Component<OnboardingViewProps> = (props) => {
   const [sheetInput, setSheetInput] = createSignal(settings().spreadsheetId || '');
   const [isConnecting, setIsConnecting] = createSignal(false);
   const [connectError, setConnectError] = createSignal('');
+  let fileInputRef: HTMLInputElement | undefined;
+
+  const handleFileUpload = (e: Event) => {
+    const target = e.target as HTMLInputElement;
+    const file = target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      if (content) {
+        try {
+          const parsed = JSON.parse(content);
+          if (!parsed.client_email || !parsed.private_key) {
+            setConnectError('File JSON tidak valid: harus memiliki "client_email" dan "private_key".');
+            return;
+          }
+          setJsonInput(content);
+          setConnectError('');
+        } catch (err: any) {
+          setConnectError('Gagal membaca file JSON: ' + err.message);
+        }
+      }
+    };
+    reader.readAsText(file);
+    target.value = '';
+  };
 
   // Perhitungan sisa hari bulan ini
   const now = new Date();
@@ -516,7 +544,7 @@ export const OnboardingView: Component<OnboardingViewProps> = (props) => {
 
             <div class="space-y-3 mb-4">
               <div>
-                <div class="flex items-center justify-between mb-1">
+                <div class="flex items-center justify-between mb-1.5">
                   <label class="text-[10px] font-bold text-warm-mute uppercase tracking-wider">
                     Isi Kunci JSON Service Account
                   </label>
@@ -529,11 +557,30 @@ export const OnboardingView: Component<OnboardingViewProps> = (props) => {
                     <span>Cara Mendapatkannya</span>
                   </button>
                 </div>
+
+                <div class="mb-2">
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    accept=".json,application/json"
+                    onChange={handleFileUpload}
+                    class="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef?.click()}
+                    class="w-full py-2 px-3 border border-dashed border-warm-border hover:border-warm-primary bg-warm-subtle/50 hover:bg-warm-subtle rounded-xl text-xs font-semibold text-warm-ink flex items-center justify-center gap-2 transition-colors"
+                  >
+                    <Upload class="w-4 h-4 text-warm-primary" />
+                    <span>Upload File JSON Service Account</span>
+                  </button>
+                </div>
+
                 <textarea
-                  placeholder={'{\n  "type": "service_account",\n  "client_email": "...",\n  "private_key": "..."\n}'}
+                  placeholder={'Atau copas isi JSON di sini:\n{\n  "type": "service_account",\n  "client_email": "...",\n  "private_key": "..."\n}'}
                   value={jsonInput()}
                   onInput={(e) => setJsonInput(e.currentTarget.value)}
-                  rows={4}
+                  rows={3}
                   class="w-full text-[11px] p-2.5 bg-warm-subtle border border-warm-border rounded-xl text-warm-ink font-mono focus:outline-none focus:border-warm-primary placeholder:text-warm-faint resize-none"
                 ></textarea>
               </div>
