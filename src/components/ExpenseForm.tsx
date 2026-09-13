@@ -4,7 +4,7 @@ import { addExpense } from '../stores/expenseStore';
 import { categories } from '../stores/categoryStore';
 import { CategoryIcon } from './CategoryIcon';
 import { AddCategoryModal } from './AddCategoryModal';
-import { Check, MessageSquare, Plus, ChevronLeft, ChevronRight } from 'lucide-solid';
+import { Check, MessageSquare, Plus, ChevronLeft, ChevronRight, Search } from 'lucide-solid';
 
 type CategoryPickerItem =
   | { type: 'category'; data: Category }
@@ -13,23 +13,31 @@ type CategoryPickerItem =
 export const ExpenseForm: Component = () => {
   const [rawAmount, setRawAmount] = createSignal<string>('');
   const [selectedCategory, setSelectedCategory] = createSignal<ExpenseCategory>('Makanan');
+  const [categorySearch, setCategorySearch] = createSignal<string>('');
   const [note, setNote] = createSignal<string>('');
   const [isSuccess, setIsSuccess] = createSignal<boolean>(false);
   const [showAddModal, setShowAddModal] = createSignal<boolean>(false);
   let categorySliderRef: HTMLDivElement | undefined;
 
-  const allCategoryItems = createMemo<CategoryPickerItem[]>(() => {
-    const list: CategoryPickerItem[] = categories().map((c) => ({ type: 'category', data: c }));
-    list.push({ type: 'add' });
+  const filteredCategoryItems = createMemo<CategoryPickerItem[]>(() => {
+    const q = categorySearch().trim().toLowerCase();
+    const cats = categories();
+    const matchingCats = q
+      ? cats.filter((c) => c.name.toLowerCase().includes(q))
+      : cats;
+
+    // + Tambah diletakkan di urutan pertama
+    const list: CategoryPickerItem[] = [{ type: 'add' }];
+    matchingCats.forEach((c) => list.push({ type: 'category', data: c }));
     return list;
   });
 
   // Arrow < > hanya muncul jika item kategori lebih dari 9
-  const showArrows = createMemo(() => allCategoryItems().length > 9);
+  const showArrows = createMemo(() => filteredCategoryItems().length > 9);
 
   // Pagination flex max 3 row (~9 items per view/page)
   const categoryPages = createMemo(() => {
-    const items = allCategoryItems();
+    const items = filteredCategoryItems();
     if (items.length <= 9) {
       return [items];
     }
@@ -155,30 +163,55 @@ export const ExpenseForm: Component = () => {
         </div>
       </div>
 
-      {/* PILIHAN KATEGORI (FLEX WRAP, MAX 3 ROW, ARROW JIKA > 9 ITEM) */}
+      {/* PILIHAN KATEGORI (FLEX WRAP, MAX 3 ROW, SEARCH & CONDITIONAL ARROWS) */}
       <div class="mt-4">
-        <div class="flex items-center justify-between mb-2">
-          <label class="text-xs font-semibold text-warm-mute">Pilih Kategori</label>
-          <Show when={showArrows()}>
-            <div class="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => scrollCategories('left')}
-                class="p-1 rounded-full bg-warm-subtle text-warm-ink hover:bg-warm-primary/30 transition-colors active:scale-95"
-                aria-label="Kategori Sebelumnya"
-              >
-                <ChevronLeft class="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => scrollCategories('right')}
-                class="p-1 rounded-full bg-warm-subtle text-warm-ink hover:bg-warm-primary/30 transition-colors active:scale-95"
-                aria-label="Kategori Selanjutnya"
-              >
-                <ChevronRight class="w-3.5 h-3.5" />
-              </button>
+        <div class="flex items-center justify-between gap-2 mb-2">
+          <label class="text-xs font-semibold text-warm-mute shrink-0">Pilih Kategori</label>
+          
+          <div class="flex items-center gap-1.5 ml-auto">
+            {/* Input Pencarian Kategori */}
+            <div class="relative flex items-center">
+              <Search class="w-3.5 h-3.5 text-warm-mute absolute left-2.5 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Cari..."
+                value={categorySearch()}
+                onInput={(e) => setCategorySearch(e.currentTarget.value)}
+                class="w-24 focus:w-32 transition-all duration-200 bg-warm-subtle/70 border border-warm-border/80 rounded-full pl-7 pr-5 py-1 text-xs text-warm-ink placeholder:text-warm-faint focus:outline-none focus:border-warm-primary"
+              />
+              <Show when={categorySearch()}>
+                <button
+                  type="button"
+                  onClick={() => setCategorySearch('')}
+                  class="absolute right-2 text-warm-mute hover:text-warm-ink text-xs font-bold leading-none p-0.5"
+                  title="Hapus pencarian"
+                >
+                  ×
+                </button>
+              </Show>
             </div>
-          </Show>
+
+            <Show when={showArrows()}>
+              <div class="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => scrollCategories('left')}
+                  class="p-1 rounded-full bg-warm-subtle text-warm-ink hover:bg-warm-primary/30 transition-colors active:scale-95"
+                  aria-label="Kategori Sebelumnya"
+                >
+                  <ChevronLeft class="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => scrollCategories('right')}
+                  class="p-1 rounded-full bg-warm-subtle text-warm-ink hover:bg-warm-primary/30 transition-colors active:scale-95"
+                  aria-label="Kategori Selanjutnya"
+                >
+                  <ChevronRight class="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </Show>
+          </div>
         </div>
 
         <div
@@ -190,37 +223,37 @@ export const ExpenseForm: Component = () => {
               <div class="w-full shrink-0 snap-start flex flex-wrap gap-2 content-start min-h-[92px] py-1">
                 <For each={pageItems}>
                   {(item) => {
-                    if (item.type === 'category') {
-                      const cat = item.data;
-                      const isSelected = () => selectedCategory() === cat.name;
+                    if (item.type === 'add') {
+                      // Tombol Tambah Kategori di Urutan Pertama
                       return (
                         <button
                           type="button"
-                          onClick={() => setSelectedCategory(cat.name)}
-                          class={`w-[calc((100%-16px)/3)] h-10 flex items-center justify-center gap-1.5 px-2 rounded-xl text-xs font-semibold transition-all border shrink-0 active:scale-95 ${
-                            isSelected()
-                              ? 'bg-warm-primary text-white border-warm-primary shadow-sm scale-100 ring-2 ring-warm-primary/30'
-                              : 'bg-warm-subtle text-warm-ink border-warm-border hover:border-warm-primary/50'
-                          }`}
-                          title={cat.name}
+                          onClick={() => setShowAddModal(true)}
+                          class="w-[calc((100%-16px)/3)] h-10 flex items-center justify-center gap-1.5 px-2 rounded-xl text-xs font-semibold transition-all border border-dashed border-warm-primary text-warm-primary bg-warm-card hover:bg-warm-subtle/50 shrink-0 active:scale-95"
                         >
-                          <span style={{ color: isSelected() ? '#ffffff' : cat.color }}>
-                            <CategoryIcon name={cat.icon} class="w-3.5 h-3.5 shrink-0" />
-                          </span>
-                          <span class="truncate min-w-0">{cat.name}</span>
+                          <Plus class="w-3.5 h-3.5 shrink-0" />
+                          <span class="truncate min-w-0">Tambah</span>
                         </button>
                       );
                     }
 
-                    // Tombol Tambah Kategori
+                    const cat = item.data;
+                    const isSelected = () => selectedCategory() === cat.name;
                     return (
                       <button
                         type="button"
-                        onClick={() => setShowAddModal(true)}
-                        class="w-[calc((100%-16px)/3)] h-10 flex items-center justify-center gap-1.5 px-2 rounded-xl text-xs font-semibold transition-all border border-dashed border-warm-primary text-warm-primary bg-warm-card hover:bg-warm-subtle/50 shrink-0 active:scale-95"
+                        onClick={() => setSelectedCategory(cat.name)}
+                        class={`w-[calc((100%-16px)/3)] h-10 flex items-center justify-center gap-1.5 px-2 rounded-xl text-xs font-semibold transition-all border shrink-0 active:scale-95 ${
+                          isSelected()
+                            ? 'bg-warm-primary text-white border-warm-primary shadow-sm scale-100 ring-2 ring-warm-primary/30'
+                            : 'bg-warm-subtle text-warm-ink border-warm-border hover:border-warm-primary/50'
+                        }`}
+                        title={cat.name}
                       >
-                        <Plus class="w-3.5 h-3.5 shrink-0" />
-                        <span class="truncate min-w-0">Tambah</span>
+                        <span style={{ color: isSelected() ? '#ffffff' : cat.color }}>
+                          <CategoryIcon name={cat.icon} class="w-3.5 h-3.5 shrink-0" />
+                        </span>
+                        <span class="truncate min-w-0">{cat.name}</span>
                       </button>
                     );
                   }}
