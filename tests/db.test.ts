@@ -8,11 +8,11 @@ describe('CupuDatabase v2 Categories', () => {
     db = new CupuDatabase();
   });
 
-  it('harus menginisialisasi 6 kategori default jika database baru', async () => {
+  it('harus menginisialisasi 5 kategori default jika database baru (tanpa Lainnya)', async () => {
     const cats = await db.getAllCategories();
-    expect(cats.length).toBe(6);
+    expect(cats.length).toBe(5);
     expect(cats.map(c => c.name)).toContain('Makanan');
-    expect(cats.map(c => c.name)).toContain('Lainnya');
+    expect(cats.map(c => c.name)).not.toContain('Lainnya');
   });
 
   it('bisa menambah dan menghapus kategori kustom', async () => {

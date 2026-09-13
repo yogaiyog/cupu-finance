@@ -76,12 +76,12 @@ export function getCategoryConfig(categoryName: string): {
     };
   }
 
-  const fallback = categories().find((c) => c.name === 'Lainnya') || DEFAULT_CATEGORIES[5];
+  // Fallback styling untuk kategori tidak dikenal
   return {
     label: categoryName,
-    color: fallback.color,
-    softColor: fallback.softColor,
-    icon: fallback.icon,
+    color: '#8d877e',
+    softColor: '#eeebe6',
+    icon: 'MoreHorizontal',
   };
 }
 

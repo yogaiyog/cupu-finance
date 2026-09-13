@@ -13,12 +13,12 @@ describe('categoryStore', () => {
   });
 
   it('memuat kategori default', () => {
-    expect(categories().length).toBeGreaterThanOrEqual(6);
+    expect(categories().length).toBeGreaterThanOrEqual(5);
     const config = getCategoryConfig('Makanan');
     expect(config.color).toBe('#d48b6a');
   });
 
-  it('fallback ke Lainnya untuk kategori tidak dikenal', () => {
+  it('fallback untuk kategori tidak dikenal', () => {
     const config = getCategoryConfig('KategoriAcakUnknown');
     expect(config.label).toBe('KategoriAcakUnknown');
     expect(config.color).toBe('#8d877e');

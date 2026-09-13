@@ -3,11 +3,10 @@ import { Expense, Category } from '../types';
 
 export const DEFAULT_CATEGORIES: Category[] = [
   { id: 'cat_makanan', name: 'Makanan', color: '#d48b6a', softColor: '#faeae1', icon: 'Utensils', isDefault: true, order: 1 },
-  { id: 'cat_transport', name: 'Transport', color: '#7097c2', softColor: '#e8eff7', icon: 'Car', isDefault: true, order: 2 },
+  { id: 'cat_transport', name: 'Transportasi', color: '#7097c2', softColor: '#e8eff7', icon: 'Car', isDefault: true, order: 2 },
   { id: 'cat_belanja', name: 'Belanja', color: '#a688b8', softColor: '#f3edf7', icon: 'ShoppingBag', isDefault: true, order: 3 },
   { id: 'cat_tagihan', name: 'Tagihan', color: '#c47171', softColor: '#fae8e8', icon: 'Receipt', isDefault: true, order: 4 },
   { id: 'cat_hiburan', name: 'Hiburan', color: '#c77d99', softColor: '#f7eaef', icon: 'Film', isDefault: true, order: 5 },
-  { id: 'cat_lainnya', name: 'Lainnya', color: '#8d877e', softColor: '#eeebe6', icon: 'MoreHorizontal', isDefault: true, order: 6 },
 ];
 
 export class CupuDatabase extends Dexie {
@@ -31,6 +30,10 @@ export class CupuDatabase extends Dexie {
     });
 
     this.on('ready', async () => {
+      // Hapus kategori 'Lainnya' jika ada
+      try {
+        await this.categories.delete('cat_lainnya');
+      } catch {}
       const count = await this.categories.count();
       if (count === 0) {
         await this.categories.bulkPut(DEFAULT_CATEGORIES);
@@ -42,12 +45,17 @@ export class CupuDatabase extends Dexie {
    * Mengambil seluruh daftar kategori (diurutkan berdasarkan order)
    */
   async getAllCategories(): Promise<Category[]> {
+    try {
+      await this.categories.delete('cat_lainnya');
+    } catch {}
     const cats = await this.categories.toArray();
     if (cats.length === 0) {
       await this.categories.bulkPut(DEFAULT_CATEGORIES);
       return [...DEFAULT_CATEGORIES];
     }
-    return cats.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+    return cats
+      .filter((c) => c.name !== 'Lainnya' && c.id !== 'cat_lainnya')
+      .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
   }
 
   /**
