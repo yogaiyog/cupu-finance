@@ -481,14 +481,21 @@ export class ServiceAccountSyncProvider implements SyncProvider {
     const needsValues = !checkData.values || checkData.values.length === 0 || !checkData.values[0]?.[0];
 
     if (needsValues) {
+      const now = new Date();
+      const curYear = now.getFullYear();
+      const curMonth = String(now.getMonth() + 1).padStart(2, '0');
+      const curDay = String(now.getDate()).padStart(2, '0');
+      const startOfMonthStr = `${curYear}-${curMonth}-01`;
+      const todayDateStr = `${curYear}-${curMonth}-${curDay}`;
+
       // Siapkan data baris formula dengan Filter Rentang Tanggal di bagian atas
       const rows: string[][] = [
         ['📊 RINGKASAN & STATISTIK KEUANGAN', '', '', ''],
         [
-          'Periode Mulai:',
-          '=IF(COUNT(Expenses!B2:B)>0, TEXT(MIN(Expenses!B2:B), "yyyy-mm-dd"), TEXT(TODAY(), "yyyy-mm-01"))',
-          'Periode Selesai:',
-          '=TEXT(TODAY(), "yyyy-mm-dd")',
+          '📅 Periode Mulai:',
+          startOfMonthStr,
+          '📅 Periode Selesai:',
+          todayDateStr,
         ],
         ['', '', '', ''],
         ['Indikator', 'Nilai (Sesuai Periode)', '', ''],
@@ -545,7 +552,7 @@ export class ServiceAccountSyncProvider implements SyncProvider {
         }
       );
     } else {
-      // Periksa apakah B2 masih bernilai angka serial lama (misal 46266) dan perbaiki otomatis
+      // Periksa apakah B2 masih bernilai angka serial lama (misal 46266) dan gantikan dengan tanggal bersih yang siap diedit
       try {
         const checkB2Res = await fetch(
           `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Statistik!B2?valueRenderOption=FORMATTED_VALUE`,
@@ -554,13 +561,17 @@ export class ServiceAccountSyncProvider implements SyncProvider {
         const b2Data = await checkB2Res.json().catch(() => ({}));
         const valB2 = String(b2Data.values?.[0]?.[0] || '').trim();
         if (/^\d{5}$/.test(valB2)) {
+          const now = new Date();
+          const curYear = now.getFullYear();
+          const curMonth = String(now.getMonth() + 1).padStart(2, '0');
+          const curDay = String(now.getDate()).padStart(2, '0');
           await fetch(
-            `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Statistik!B2?valueInputOption=USER_ENTERED`,
+            `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Statistik!A2:D2?valueInputOption=USER_ENTERED`,
             {
               method: 'PUT',
               headers: authHeaders,
               body: JSON.stringify({
-                values: [['=IF(COUNT(Expenses!B2:B)>0, TEXT(MIN(Expenses!B2:B), "yyyy-mm-dd"), TEXT(TODAY(), "yyyy-mm-01"))']],
+                values: [['📅 Periode Mulai:', `${curYear}-${curMonth}-01`, '📅 Periode Selesai:', `${curYear}-${curMonth}-${curDay}`]],
               }),
             }
           );
@@ -630,7 +641,46 @@ export class ServiceAccountSyncProvider implements SyncProvider {
           fields: 'userEnteredFormat(backgroundColor,textFormat)',
         },
       },
-      // Format Tanggal dan Align B2 (Periode Mulai) & D2 (Periode Selesai)
+      // Data Validation (Date Picker / Pop-up Kalender saat klik 2x) pada B2 & D2
+      {
+        setDataValidation: {
+          range: {
+            sheetId: statSheetId,
+            startRowIndex: 1,
+            endRowIndex: 2,
+            startColumnIndex: 1,
+            endColumnIndex: 2,
+          },
+          rule: {
+            condition: {
+              type: 'DATE_IS_VALID',
+            },
+            inputMessage: 'Klik dua kali untuk memilih tanggal dari kalender pop-up',
+            strict: false,
+            showCustomUi: true,
+          },
+        },
+      },
+      {
+        setDataValidation: {
+          range: {
+            sheetId: statSheetId,
+            startRowIndex: 1,
+            endRowIndex: 2,
+            startColumnIndex: 3,
+            endColumnIndex: 4,
+          },
+          rule: {
+            condition: {
+              type: 'DATE_IS_VALID',
+            },
+            inputMessage: 'Klik dua kali untuk memilih tanggal dari kalender pop-up',
+            strict: false,
+            showCustomUi: true,
+          },
+        },
+      },
+      // Styling Kotak Input Tanggal B2 & D2 (Putih Bersih + Bold + Center)
       {
         repeatCell: {
           range: {
@@ -642,11 +692,13 @@ export class ServiceAccountSyncProvider implements SyncProvider {
           },
           cell: {
             userEnteredFormat: {
+              backgroundColor: { red: 1, green: 1, blue: 1 },
               numberFormat: { type: 'DATE', pattern: 'yyyy-mm-dd' },
               horizontalAlignment: 'CENTER',
+              textFormat: { bold: true, fontSize: 10, foregroundColor: { red: 0.18, green: 0.16, blue: 0.15 } },
             },
           },
-          fields: 'userEnteredFormat(numberFormat,horizontalAlignment)',
+          fields: 'userEnteredFormat(backgroundColor,numberFormat,horizontalAlignment,textFormat)',
         },
       },
       {
@@ -660,11 +712,44 @@ export class ServiceAccountSyncProvider implements SyncProvider {
           },
           cell: {
             userEnteredFormat: {
+              backgroundColor: { red: 1, green: 1, blue: 1 },
               numberFormat: { type: 'DATE', pattern: 'yyyy-mm-dd' },
               horizontalAlignment: 'CENTER',
+              textFormat: { bold: true, fontSize: 10, foregroundColor: { red: 0.18, green: 0.16, blue: 0.15 } },
             },
           },
-          fields: 'userEnteredFormat(numberFormat,horizontalAlignment)',
+          fields: 'userEnteredFormat(backgroundColor,numberFormat,horizontalAlignment,textFormat)',
+        },
+      },
+      // Border Kotak Input B2 & D2
+      {
+        updateBorders: {
+          range: {
+            sheetId: statSheetId,
+            startRowIndex: 1,
+            endRowIndex: 2,
+            startColumnIndex: 1,
+            endColumnIndex: 2,
+          },
+          top: { style: 'SOLID', color: { red: 0.78, green: 0.75, blue: 0.72 } },
+          bottom: { style: 'SOLID', color: { red: 0.78, green: 0.75, blue: 0.72 } },
+          left: { style: 'SOLID', color: { red: 0.78, green: 0.75, blue: 0.72 } },
+          right: { style: 'SOLID', color: { red: 0.78, green: 0.75, blue: 0.72 } },
+        },
+      },
+      {
+        updateBorders: {
+          range: {
+            sheetId: statSheetId,
+            startRowIndex: 1,
+            endRowIndex: 2,
+            startColumnIndex: 3,
+            endColumnIndex: 4,
+          },
+          top: { style: 'SOLID', color: { red: 0.78, green: 0.75, blue: 0.72 } },
+          bottom: { style: 'SOLID', color: { red: 0.78, green: 0.75, blue: 0.72 } },
+          left: { style: 'SOLID', color: { red: 0.78, green: 0.75, blue: 0.72 } },
+          right: { style: 'SOLID', color: { red: 0.78, green: 0.75, blue: 0.72 } },
         },
       },
       // Header KPI (Baris 4, 0-indexed 3)

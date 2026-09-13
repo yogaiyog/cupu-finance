@@ -155,16 +155,28 @@ function ensureStatistikSheet(ss) {
         .setFontWeight("bold").setFontSize(13);
       
       // Rentang Tanggal di bagian atas
+      var now = new Date();
+      var curYear = now.getFullYear();
+      var curMonth = ("0" + (now.getMonth() + 1)).slice(-2);
+      var curDay = ("0" + now.getDate()).slice(-2);
+      var startOfMonth = curYear + "-" + curMonth + "-01";
+      var todayStr = curYear + "-" + curMonth + "-" + curDay;
+
       statSheet.getRange("A2:D2").setValues([[
-        "Periode Mulai:",
-        '=IF(COUNT(Expenses!B2:B)>0, TEXT(MIN(Expenses!B2:B), "yyyy-mm-dd"), TEXT(TODAY(), "yyyy-mm-01"))',
-        "Periode Selesai:",
-        '=TEXT(TODAY(), "yyyy-mm-dd")'
+        "📅 Periode Mulai:",
+        startOfMonth,
+        "📅 Periode Selesai:",
+        todayStr
       ]]);
       statSheet.getRange("A2").setFontWeight("bold").setBackground("#e8e4df");
-      statSheet.getRange("B2").setNumberFormat("yyyy-mm-dd").setHorizontalAlignment("center");
+      statSheet.getRange("B2").setNumberFormat("yyyy-mm-dd").setHorizontalAlignment("center").setBackground("#ffffff").setFontWeight("bold");
       statSheet.getRange("C2").setFontWeight("bold").setBackground("#e8e4df");
-      statSheet.getRange("D2").setNumberFormat("yyyy-mm-dd").setHorizontalAlignment("center");
+      statSheet.getRange("D2").setNumberFormat("yyyy-mm-dd").setHorizontalAlignment("center").setBackground("#ffffff").setFontWeight("bold");
+
+      // Validasi Tanggal (Pop-up Kalender otomatis saat klik 2x)
+      var dateRule = SpreadsheetApp.newDataValidation().requireDate().setAllowInvalid(true).build();
+      statSheet.getRange("B2").setDataValidation(dateRule);
+      statSheet.getRange("D2").setDataValidation(dateRule);
       
       // KPI Header (Baris 4)
       statSheet.getRange("A4:B4").setValues([["Indikator", "Nilai (Sesuai Periode)"]])
