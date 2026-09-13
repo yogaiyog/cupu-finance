@@ -30,11 +30,11 @@
 - Consumes: Dexie, Solid.js
 - Produces: `pnpm test` executable runner
 
-- [ ] **Step 1: Install dev dependencies untuk testing**
+- [x] **Step 1: Install dev dependencies untuk testing**
 
 Run: `pnpm add -D vitest fake-indexeddb`
 
-- [ ] **Step 2: Update `vite.config.ts` untuk konfigurasi Vitest**
+- [x] **Step 2: Update `vite.config.ts` untuk konfigurasi Vitest**
 
 ```typescript
 import { defineConfig } from 'vite';
@@ -56,19 +56,19 @@ export default defineConfig({
 });
 ```
 
-- [ ] **Step 3: Buat file setup test `tests/setup.ts`**
+- [x] **Step 3: Buat file setup test `tests/setup.ts`**
 
 ```typescript
 import 'fake-indexeddb/auto';
 ```
 
-- [ ] **Step 4: Tambahkan script `test` di `package.json` dan verifikasi**
+- [x] **Step 4: Tambahkan script `test` di `package.json` dan verifikasi**
 
 Tambahkan `"test": "vitest run"` di `package.json`.
 Run: `pnpm test`
 Expected: Output 0 tests or test runner exits cleanly.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add package.json pnpm-lock.yaml vite.config.ts tests/setup.ts
@@ -88,7 +88,7 @@ git commit -m "chore: setup vitest and fake-indexeddb for unit tests"
 - Consumes: Dexie schema
 - Produces: `Category` interface, `CupuDatabase.categories` Table, Dexie migration v2
 
-- [ ] **Step 1: Tulis unit test yang memverifikasi skema Dexie v2 dan seeding kategori**
+- [x] **Step 1: Tulis unit test yang memverifikasi skema Dexie v2 dan seeding kategori**
 
 Buat file `tests/db.test.ts`:
 ```typescript
@@ -130,12 +130,12 @@ describe('CupuDatabase v2 Categories', () => {
 });
 ```
 
-- [ ] **Step 2: Jalankan test untuk memastikan gagal (fail)**
+- [x] **Step 2: Jalankan test untuk memastikan gagal (fail)**
 
 Run: `pnpm test tests/db.test.ts`
 Expected: FAIL (`getAllCategories is not a function` atau sejenisnya)
 
-- [ ] **Step 3: Update `src/types/index.ts`**
+- [x] **Step 3: Update `src/types/index.ts`**
 
 Ubah definisi kategori di `src/types/index.ts`:
 ```typescript
@@ -152,7 +152,7 @@ export interface Category {
 export type ExpenseCategory = string;
 ```
 
-- [ ] **Step 4: Update `src/services/db.ts` dengan schema version 2 dan seeding**
+- [x] **Step 4: Update `src/services/db.ts` dengan schema version 2 dan seeding**
 
 Di `src/services/db.ts`:
 ```typescript
@@ -218,12 +218,12 @@ export class CupuDatabase extends Dexie {
   // ... sisa method getExpensesForMonth dll tetap sama
 ```
 
-- [ ] **Step 5: Jalankan test kembali untuk memverifikasi pass**
+- [x] **Step 5: Jalankan test kembali untuk memverifikasi pass**
 
 Run: `pnpm test tests/db.test.ts`
 Expected: PASS
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/types/index.ts src/services/db.ts tests/db.test.ts
@@ -249,7 +249,7 @@ git commit -m "feat(db): add categories table with migration and default seeding
   - `PRESET_COLORS`: array warna harmonis
   - `PRESET_ICONS`: array pilihan nama icon Lucide
 
-- [ ] **Step 1: Tulis unit test untuk `categoryStore`**
+- [x] **Step 1: Tulis unit test untuk `categoryStore`**
 
 Buat file `tests/categoryStore.test.ts`:
 ```typescript
@@ -298,12 +298,12 @@ describe('categoryStore', () => {
 });
 ```
 
-- [ ] **Step 2: Jalankan test untuk memastikan gagal (fail)**
+- [x] **Step 2: Jalankan test untuk memastikan gagal (fail)**
 
 Run: `pnpm test tests/categoryStore.test.ts`
 Expected: FAIL (`Cannot find module '../src/stores/categoryStore'`)
 
-- [ ] **Step 3: Implementasi `src/stores/categoryStore.ts`**
+- [x] **Step 3: Implementasi `src/stores/categoryStore.ts`**
 
 ```typescript
 import { createSignal } from 'solid-js';
@@ -441,12 +441,12 @@ export async function removeCategory(id: string): Promise<void> {
 loadCategories();
 ```
 
-- [ ] **Step 4: Jalankan test untuk memverifikasi pass**
+- [x] **Step 4: Jalankan test untuk memverifikasi pass**
 
 Run: `pnpm test tests/categoryStore.test.ts`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/stores/categoryStore.ts tests/categoryStore.test.ts
@@ -465,7 +465,7 @@ git commit -m "feat: add reactive categoryStore with preset icons and colors"
 - Consumes: Lucide icons (`Utensils`, `Coffee`, `Car`, `ShoppingBag`, `Receipt`, `Film`, `Heart`, `Sparkles`, `Home`, `Book`, `Gift`, `Briefcase`, `Smartphone`, `Smile`, `Music`, `Plane`, `MoreHorizontal`)
 - Produces: `<CategoryIcon name={iconName} class="w-4 h-4" style={{ color }} />`
 
-- [ ] **Step 1: Implementasi `src/components/CategoryIcon.tsx`**
+- [x] **Step 1: Implementasi `src/components/CategoryIcon.tsx`**
 
 ```tsx
 import { Component } from 'solid-js';
@@ -537,12 +537,12 @@ export const CategoryIcon: Component<CategoryIconProps> = (props) => {
 };
 ```
 
-- [ ] **Step 2: Jalankan `pnpm build` untuk verifikasi kompabilitas tipe Solid**
+- [x] **Step 2: Jalankan `pnpm build` untuk verifikasi kompabilitas tipe Solid**
 
 Run: `pnpm run build`
 Expected: Build sukses tanpa error TypeScript.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/components/CategoryIcon.tsx
@@ -560,7 +560,7 @@ git commit -m "feat(ui): add universal CategoryIcon component"
 - Consumes: `categoryStore` (`addCategory`, `PRESET_COLORS`, `PRESET_ICONS`), `CategoryIcon`
 - Produces: `<AddCategoryModal isOpen={...} onClose={...} onCreated={(newCat) => ...} />`
 
-- [ ] **Step 1: Buat komponen `src/components/AddCategoryModal.tsx`**
+- [x] **Step 1: Buat komponen `src/components/AddCategoryModal.tsx`**
 
 Komponen modal menyediakan:
 1. Input nama kategori teks.
@@ -769,12 +769,12 @@ export const AddCategoryModal: Component<AddCategoryModalProps> = (props) => {
 };
 ```
 
-- [ ] **Step 2: Jalankan `pnpm run build` untuk memverifikasi sintaks dan compile**
+- [x] **Step 2: Jalankan `pnpm run build` untuk memverifikasi sintaks dan compile**
 
 Run: `pnpm run build`
 Expected: Build berhasil tanpa error.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/components/AddCategoryModal.tsx
@@ -793,7 +793,7 @@ git commit -m "feat(ui): add AddCategoryModal with live preview, icons, and colo
 - Consumes: `categories()`, `getCategoryConfig()`, `CategoryIcon`, `AddCategoryModal`
 - Produces: Dynamic category selection chip list with `+ Tambah` button
 
-- [ ] **Step 1: Update `categoryBreakdown` di `src/stores/expenseStore.ts`**
+- [x] **Step 1: Update `categoryBreakdown` di `src/stores/expenseStore.ts`**
 
 Import `categories` dan `getCategoryConfig` dari `./categoryStore`.
 Ubah kalkulasi `categoryBreakdown`:
@@ -826,7 +826,7 @@ export const categoryBreakdown = createMemo<CategorySummary[]>(() => {
 });
 ```
 
-- [ ] **Step 2: Update `src/components/ExpenseForm.tsx`**
+- [x] **Step 2: Update `src/components/ExpenseForm.tsx`**
 
 1. Import `categories`, `getCategoryConfig`, `CategoryIcon`, dan `AddCategoryModal`.
 2. Ganti list chip statis dengan iterasi `categories()`.
@@ -834,12 +834,12 @@ export const categoryBreakdown = createMemo<CategorySummary[]>(() => {
 4. Ketika kategori baru dibuat via modal, otomatis pilih kategori tersebut (`setSelectedCategory(newCat.name)`).
 5. Ganti `renderCategoryIcon` dengan `<CategoryIcon name={getCategoryConfig(cat).icon} />`.
 
-- [ ] **Step 3: Jalankan verifikasi build**
+- [x] **Step 3: Jalankan verifikasi build**
 
 Run: `pnpm run build`
 Expected: Build PASS
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/stores/expenseStore.ts src/components/ExpenseForm.tsx
@@ -859,7 +859,7 @@ git commit -m "feat(ui): integrate dynamic categories and quick-add modal in Exp
 - Consumes: `getCategoryConfig`, `CategoryIcon`
 - Produces: Komponen list, modal delete, dan rekap bulanan menampilkan nama, warna, dan icon yang sesuai untuk kategori kustom
 
-- [ ] **Step 1: Refactor `src/components/ExpenseItem.tsx`**
+- [x] **Step 1: Refactor `src/components/ExpenseItem.tsx`**
 
 Ganti hardcoded switch icon dengan:
 ```tsx
@@ -878,20 +878,20 @@ const config = () => getCategoryConfig(props.expense.category);
 </div>
 ```
 
-- [ ] **Step 2: Refactor `src/components/DeleteConfirmModal.tsx`**
+- [x] **Step 2: Refactor `src/components/DeleteConfirmModal.tsx`**
 
 Gunakan `getCategoryConfig` dan `CategoryIcon` untuk menampilkan detail transaksi yang akan dihapus.
 
-- [ ] **Step 3: Refactor `src/components/MonthlyRecap.tsx`**
+- [x] **Step 3: Refactor `src/components/MonthlyRecap.tsx`**
 
 Gunakan `CategoryIcon` dan konfigurasi warna dinamis untuk setiap baris kategori di breakdown bulanan.
 
-- [ ] **Step 4: Jalankan test dan build**
+- [x] **Step 4: Jalankan test dan build**
 
 Run: `pnpm test && pnpm run build`
 Expected: Semua test lolos dan build sukses.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/components/ExpenseItem.tsx src/components/DeleteConfirmModal.tsx src/components/MonthlyRecap.tsx
@@ -909,7 +909,7 @@ git commit -m "refactor(ui): use dynamic CategoryIcon in ExpenseItem, DeleteConf
 - Consumes: `categories()`, `removeCategory()`, `AddCategoryModal`, `CategoryIcon`
 - Produces: Bagian "Kelola Kategori" di Pengaturan dengan daftar kategori, label badge default/kustom, tombol hapus untuk kustom, dan tombol tambah kategori baru
 
-- [ ] **Step 1: Tambahkan Section "Kelola Kategori" di `SettingsView.tsx`**
+- [x] **Step 1: Tambahkan Section "Kelola Kategori" di `SettingsView.tsx`**
 
 1. Tampilkan collapsible atau card "Kelola Kategori" dengan ikon `Tag` / `Layers`.
 2. Render daftar kategori saat ini dalam bentuk list ringkas:
@@ -919,12 +919,12 @@ git commit -m "refactor(ui): use dynamic CategoryIcon in ExpenseItem, DeleteConf
    - Tombol icon `Trash2` (untuk kategori kustom, dengan konfirmasi sebelum hapus).
 3. Tombol "+ Tambah Kategori" yang memicu pembukaan `AddCategoryModal`.
 
-- [ ] **Step 2: Jalankan full test suite dan build**
+- [x] **Step 2: Jalankan full test suite dan build**
 
 Run: `pnpm test && pnpm run build`
 Expected: PASS
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/components/SettingsView.tsx
@@ -943,7 +943,7 @@ git commit -m "feat(settings): add category management section in SettingsView"
 - Consumes: `logoImg`, `initSettings`, `loadExpensesForSelectedMonth`, `loadCategories`, `initNetworkListener`
 - Produces: Smooth branded loading/splash screen saat aplikasi pertama kali dibuka atau sedang memuat data awal
 
-- [ ] **Step 1: Implementasi Splash / Loading Screen di `src/App.tsx`**
+- [x] **Step 1: Implementasi Splash / Loading Screen di `src/App.tsx`**
 
 Tambahkan state `isAppLoading` dan render screen splash branding yang diminta:
 ```tsx
@@ -1012,12 +1012,12 @@ export const App: Component = () => {
         {/* ... sisa struktur header & main ... */}
 ```
 
-- [ ] **Step 2: Jalankan build untuk verifikasi**
+- [x] **Step 2: Jalankan build untuk verifikasi**
 
 Run: `pnpm run build`
 Expected: PASS
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/App.tsx
@@ -1031,22 +1031,22 @@ git commit -m "feat(ui): add branded splash and initial loading screen with logo
 **Files:**
 - Sync ke Android: `android/app/src/main/assets/public`
 
-- [ ] **Step 1: Jalankan seluruh test unit**
+- [x] **Step 1: Jalankan seluruh test unit**
 
 Run: `pnpm test`
 Expected: All tests pass.
 
-- [ ] **Step 2: Jalankan build web & sync Capacitor**
+- [x] **Step 2: Jalankan build web & sync Capacitor**
 
 Run: `pnpm run build && npx cap sync android`
 Expected: Build & sync berhasil.
 
-- [ ] **Step 3: Verifikasi build Android APK**
+- [x] **Step 3: Verifikasi build Android APK**
 
 Run: `cd android && ./gradlew assembleDebug && cd ..`
 Expected: `BUILD SUCCESSFUL`
 
-- [ ] **Step 4: Commit dan selesaikan**
+- [x] **Step 4: Commit dan selesaikan**
 
 ```bash
 git add -A
