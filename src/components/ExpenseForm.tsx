@@ -187,7 +187,7 @@ export const ExpenseForm: Component = () => {
         >
           <For each={categoryPages()}>
             {(pageItems) => (
-              <div class="w-full shrink-0 snap-start flex flex-wrap gap-2 content-start min-h-[105px]">
+              <div class="w-full shrink-0 snap-start flex flex-wrap justify-center items-center content-center gap-2 min-h-[114px] py-1">
                 <For each={pageItems}>
                   {(item) => {
                     if (item.type === 'category') {
@@ -197,16 +197,17 @@ export const ExpenseForm: Component = () => {
                         <button
                           type="button"
                           onClick={() => setSelectedCategory(cat.name)}
-                          class={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all border ${
+                          class={`flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold transition-all border shrink-0 active:scale-95 ${
                             isSelected()
-                              ? 'bg-warm-primary text-white border-warm-primary shadow-sm scale-100'
+                              ? 'bg-warm-primary text-white border-warm-primary shadow-sm scale-100 ring-2 ring-warm-primary/30'
                               : 'bg-warm-subtle text-warm-ink border-warm-border hover:border-warm-primary/50'
                           }`}
+                          style={{ 'min-width': '96px' }}
                         >
                           <span style={{ color: isSelected() ? '#ffffff' : cat.color }}>
-                            <CategoryIcon name={cat.icon} class="w-3.5 h-3.5" />
+                            <CategoryIcon name={cat.icon} class="w-3.5 h-3.5 shrink-0" />
                           </span>
-                          <span class="max-w-[110px] truncate">{cat.name}</span>
+                          <span class="max-w-[100px] truncate">{cat.name}</span>
                         </button>
                       );
                     }
@@ -216,9 +217,10 @@ export const ExpenseForm: Component = () => {
                       <button
                         type="button"
                         onClick={() => setShowAddModal(true)}
-                        class="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all border border-dashed border-warm-primary text-warm-primary bg-warm-card hover:bg-warm-subtle/50"
+                        class="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold transition-all border border-dashed border-warm-primary text-warm-primary bg-warm-card hover:bg-warm-subtle/50 shrink-0 active:scale-95"
+                        style={{ 'min-width': '96px' }}
                       >
-                        <Plus class="w-3.5 h-3.5" />
+                        <Plus class="w-3.5 h-3.5 shrink-0" />
                         <span>Tambah</span>
                       </button>
                     );
