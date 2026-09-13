@@ -3,6 +3,7 @@ import { initSettings, settings, isLoadingSettings } from './stores/settingsStor
 import { initNetworkListener } from './services/network';
 import { initSyncManager } from './services/sync/syncManager';
 import { loadExpensesForSelectedMonth } from './stores/expenseStore';
+import { loadCategories } from './stores/categoryStore';
 import { Navbar, ActiveTab } from './components/Navbar';
 import { SyncBadge } from './components/SyncBadge';
 import { ExpenseForm } from './components/ExpenseForm';
@@ -16,18 +17,52 @@ import logoImg from './assets/logo.png';
 
 export const App: Component = () => {
   const [activeTab, setActiveTab] = createSignal<ActiveTab>('catat');
+  const [isAppLoading, setIsAppLoading] = createSignal<boolean>(true);
 
   onMount(async () => {
-    await initSettings();
-    await initNetworkListener();
-    await loadExpensesForSelectedMonth();
-    initSyncManager();
+    const minDelay = new Promise((resolve) => setTimeout(resolve, 600));
+    try {
+      await Promise.all([
+        initSettings(),
+        initNetworkListener(),
+        loadExpensesForSelectedMonth(),
+        loadCategories(),
+        minDelay,
+      ]);
+      initSyncManager();
+    } catch (err) {
+      console.error('Error saat inisialisasi aplikasi:', err);
+    } finally {
+      setIsAppLoading(false);
+    }
   });
 
   return (
     <div class="min-h-screen bg-warm-canvas text-warm-ink flex flex-col items-center">
-      {/* TAMPILAN PERTAMA KALI (ONBOARDING SCREEN) */}
-      <Show when={!isLoadingSettings() && !settings().hasSeenOnboarding}>
+      {/* 1. BRANDED SPLASH / INITIAL LOADING SCREEN */}
+      <Show when={isAppLoading()}>
+        <div class="fixed inset-0 z-50 bg-warm-canvas flex flex-col items-center justify-between px-4 py-4 min-h-screen">
+          <div class="w-full flex-1 flex flex-col items-center justify-between animate-fadeIn py-4">
+            {/* TENGAH: LOGO, H1 & H3 */}
+            <div class="w-full flex-1 flex flex-col items-center justify-center text-center">
+              <img
+                src={logoImg}
+                alt="Cupu Finance Logo"
+                class="w-44 h-44 object-contain drop-shadow-md mb-6"
+              />
+              <h1 class="text-3xl font-extrabold text-warm-ink tracking-tight mb-2">
+                Cupu Finance
+              </h1>
+              <h3 class="text-sm font-semibold text-warm-primary tracking-wide">
+                Catat Uang Paling Unyu
+              </h3>
+            </div>
+          </div>
+        </div>
+      </Show>
+
+      {/* 2. TAMPILAN PERTAMA KALI (ONBOARDING SCREEN) */}
+      <Show when={!isAppLoading() && !isLoadingSettings() && !settings().hasSeenOnboarding}>
         <OnboardingView />
       </Show>
 
