@@ -54,3 +54,4 @@ android/captures/
 ios/App/Pods/
 ios/App/Podfile.lock
 ios/App/build/
+*.apk

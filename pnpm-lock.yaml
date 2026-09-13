@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@capacitor/android':
+        specifier: ^6.2.2
+        version: 6.2.2(@capacitor/core@6.2.2)
       '@capacitor/app':
         specifier: ^6.0.2
         version: 6.0.3(@capacitor/core@6.2.2)
@@ -138,6 +141,11 @@ packages:
   '@babel/types@7.29.8':
     resolution: {integrity: sha512-Vj1jF3cPfxg7OAfoI7QnVKLoILlm2JF9pnVHrX8qx7AHMiYWT+NDAA7jChlNgRS4WTLc/fD1lXLmPixluj+3Gg==}
     engines: {node: '>=6.9.0'}
+
+  '@capacitor/android@6.2.2':
+    resolution: {integrity: sha512-JjIu1ryNE16PQTp51rb4NEygxP7cSCDMmUqx4f5f12xscKdGKTjO9bkEP3TroLnTa/J6p2QopIhRbrd3E/7DrA==}
+    peerDependencies:
+      '@capacitor/core': ^6.2.0
 
   '@capacitor/app@6.0.3':
     resolution: {integrity: sha512-4gFUCbcVz0N/YYN32OBFerocWXslIv3Nc90gDiRsBkJc0plwK6kIUT6PKa5WtW2kfhteUeCVXQbvArH2fH+0Ug==}
@@ -1455,6 +1463,10 @@ snapshots:
     dependencies:
       '@babel/helper-string-parser': 7.29.7
       '@babel/helper-validator-identifier': 7.29.7
+
+  '@capacitor/android@6.2.2(@capacitor/core@6.2.2)':
+    dependencies:
+      '@capacitor/core': 6.2.2
 
   '@capacitor/app@6.0.3(@capacitor/core@6.2.2)':
     dependencies:
