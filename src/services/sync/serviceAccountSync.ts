@@ -949,7 +949,7 @@ export class ServiceAccountSyncProvider implements SyncProvider {
       });
     }
 
-    if (needsValues || !hasChart) {
+    if (formatRequests.length > 0) {
       await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`, {
         method: 'POST',
         headers: authHeaders,

@@ -229,6 +229,13 @@ function ensureStatistikSheet(ss) {
         .setOption("height", 350)
         .build();
       statSheet.insertChart(chart);
+    } else {
+      // Pastikan B2 dan D2 selalu berformat Number Date & memiliki validasi kalender
+      statSheet.getRange("B2").setNumberFormat("yyyy-mm-dd").setHorizontalAlignment("center");
+      statSheet.getRange("D2").setNumberFormat("yyyy-mm-dd").setHorizontalAlignment("center");
+      var dateRule = SpreadsheetApp.newDataValidation().requireDate().setAllowInvalid(true).build();
+      statSheet.getRange("B2").setDataValidation(dateRule);
+      statSheet.getRange("D2").setDataValidation(dateRule);
     }
   } catch (err) {
     // Abaikan agar tidak memblokir sinkronisasi utama
