@@ -1,25 +1,75 @@
-import { Component, For, Show } from 'solid-js';
+import { Component, For, Show, createSignal, createMemo } from 'solid-js';
 import {
   selectedMonth,
   changeMonth,
   totalMonthlyExpense,
   dailyAverageExpense,
   categoryBreakdown,
+  groupedExpenses,
   formatRupiah,
+  isLoadingExpenses,
 } from '../stores/expenseStore';
-import { ExpenseList } from './ExpenseList';
+import { ExpenseItem } from './ExpenseItem';
 import { settings } from '../stores/settingsStore';
 import { getCategoryConfig } from '../stores/categoryStore';
 import { CategoryIcon } from './CategoryIcon';
-import { ChevronLeft, ChevronRight, PieChart } from 'lucide-solid';
+import {
+  ChevronLeft,
+  ChevronRight,
+  PieChart,
+  ChevronDown,
+  ChevronUp,
+  Search,
+  Calendar,
+  Inbox,
+} from 'lucide-solid';
 
 export const MonthlyRecap: Component = () => {
+  const [searchQuery, setSearchQuery] = createSignal('');
+  const [expandedDates, setExpandedDates] = createSignal<string[]>([]);
+
   // Format tampilan bulan: "September 2026"
   const formattedMonthTitle = () => {
     const [year, month] = selectedMonth().split('-').map(Number);
     const dateObj = new Date(year, month - 1, 1);
     return dateObj.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
   };
+
+  const toggleExpandDate = (dateKey: string) => {
+    setExpandedDates((prev) =>
+      prev.includes(dateKey) ? prev.filter((d) => d !== dateKey) : [...prev, dateKey]
+    );
+  };
+
+  const filteredDailyGroups = createMemo(() => {
+    const q = searchQuery().trim().toLowerCase();
+    const groups = groupedExpenses();
+    if (!q) return groups;
+
+    return groups
+      .map((g) => {
+        const dateMatch =
+          g.date.toLowerCase().includes(q) || g.formattedDate.toLowerCase().includes(q);
+        const matchingItems = g.items.filter(
+          (item) =>
+            item.category.toLowerCase().includes(q) ||
+            (item.note && item.note.toLowerCase().includes(q)) ||
+            String(item.amount).includes(q)
+        );
+
+        if (dateMatch) {
+          return g;
+        } else if (matchingItems.length > 0) {
+          return {
+            ...g,
+            items: matchingItems,
+            totalDay: matchingItems.reduce((sum, it) => sum + it.amount, 0),
+          };
+        }
+        return null;
+      })
+      .filter((g): g is NonNullable<typeof g> => g !== null);
+  });
 
   return (
     <div class="w-full pb-8">
@@ -115,12 +165,99 @@ export const MonthlyRecap: Component = () => {
         </div>
       </Show>
 
-      {/* RIWAYAT TRANSAKSI BULAN INI */}
+      {/* RIWAYAT TRANSAKSI HARIAN (SUM PER HARI) */}
       <div class="mt-2">
-        <h3 class="text-xs font-bold text-warm-mute uppercase tracking-wider px-1 mb-3">
-          Riwayat Transaksi Harian
-        </h3>
-        <ExpenseList />
+        <div class="flex items-center justify-between px-1 mb-2">
+          <h3 class="text-xs font-bold text-warm-mute uppercase tracking-wider">
+            Riwayat Harian (Total per Hari)
+          </h3>
+          <span class="text-xs text-warm-mute font-medium">
+            {filteredDailyGroups().length} hari
+          </span>
+        </div>
+
+        {/* Input Pencarian Transaksi */}
+        <div class="relative mb-3">
+          <Search class="w-4 h-4 text-warm-mute absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <input
+            type="text"
+            placeholder="Cari tanggal, kategori, atau catatan..."
+            value={searchQuery()}
+            onInput={(e) => setSearchQuery(e.currentTarget.value)}
+            class="w-full bg-warm-card border border-warm-border rounded-xl pl-9 pr-3.5 py-2 text-xs text-warm-ink placeholder:text-warm-faint focus:outline-none focus:border-warm-primary transition-colors"
+          />
+        </div>
+
+        <Show when={isLoadingExpenses()}>
+          <div class="py-8 text-center text-warm-mute text-sm">
+            Memuat riwayat pengeluaran...
+          </div>
+        </Show>
+
+        <Show when={!isLoadingExpenses() && filteredDailyGroups().length === 0}>
+          <div class="flex flex-col items-center justify-center py-8 px-4 text-center bg-warm-card/60 border border-dashed border-warm-border rounded-2xl">
+            <div class="p-3 rounded-full bg-warm-subtle text-warm-mute mb-2">
+              <Inbox class="w-5 h-5" />
+            </div>
+            <p class="text-xs font-medium text-warm-ink">
+              {searchQuery() ? 'Tidak ada transaksi yang cocok' : 'Belum ada pengeluaran di bulan ini'}
+            </p>
+          </div>
+        </Show>
+
+        <div class="space-y-2.5">
+          <For each={filteredDailyGroups()}>
+            {(group) => {
+              const isExpanded = () => expandedDates().includes(group.date);
+              return (
+                <div class="bg-warm-card border border-warm-border rounded-2xl overflow-hidden transition-all shadow-[0_1px_3px_rgba(45,40,37,0.03)]">
+                  {/* Kartu Ringkasan Harian (Sum) */}
+                  <button
+                    type="button"
+                    onClick={() => toggleExpandDate(group.date)}
+                    class="w-full p-3.5 flex items-center justify-between text-left hover:bg-warm-subtle/30 transition-colors active:scale-[0.99]"
+                  >
+                    <div class="flex items-center gap-2.5">
+                      <div class="p-2 rounded-xl bg-warm-subtle text-warm-ink shrink-0">
+                        <Calendar class="w-4 h-4 text-warm-mute" />
+                      </div>
+                      <div>
+                        <div class="text-xs font-bold text-warm-ink">
+                          {group.formattedDate}
+                        </div>
+                        <div class="text-[11px] text-warm-mute">
+                          {group.items.length} transaksi
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                      <span class="text-sm font-extrabold text-warm-ink tabular-nums">
+                        {formatRupiah(group.totalDay)}
+                      </span>
+                      <div class="text-warm-mute p-0.5">
+                        {isExpanded() ? (
+                          <ChevronUp class="w-4 h-4" />
+                        ) : (
+                          <ChevronDown class="w-4 h-4" />
+                        )}
+                      </div>
+                    </div>
+                  </button>
+
+                  {/* Detail Item Transaksi jika dibuka */}
+                  <Show when={isExpanded()}>
+                    <div class="px-3 pb-3 pt-1 border-t border-warm-border/60 bg-warm-card/60">
+                      <For each={group.items}>
+                        {(expense) => <ExpenseItem expense={expense} />}
+                      </For>
+                    </div>
+                  </Show>
+                </div>
+              );
+            }}
+          </For>
+        </div>
       </div>
     </div>
   );

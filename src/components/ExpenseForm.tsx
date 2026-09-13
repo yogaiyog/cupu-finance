@@ -4,7 +4,7 @@ import { addExpense } from '../stores/expenseStore';
 import { categories } from '../stores/categoryStore';
 import { CategoryIcon } from './CategoryIcon';
 import { AddCategoryModal } from './AddCategoryModal';
-import { Check, MessageSquare, Plus } from 'lucide-solid';
+import { Check, MessageSquare, Plus, ChevronLeft, ChevronRight } from 'lucide-solid';
 
 export const ExpenseForm: Component = () => {
   const [rawAmount, setRawAmount] = createSignal<string>('');
@@ -12,6 +12,16 @@ export const ExpenseForm: Component = () => {
   const [note, setNote] = createSignal<string>('');
   const [isSuccess, setIsSuccess] = createSignal<boolean>(false);
   const [showAddModal, setShowAddModal] = createSignal<boolean>(false);
+  let categorySliderRef: HTMLDivElement | undefined;
+
+  const scrollCategories = (direction: 'left' | 'right') => {
+    if (!categorySliderRef) return;
+    const scrollAmount = categorySliderRef.clientWidth * 0.75;
+    categorySliderRef.scrollBy({
+      left: direction === 'left' ? -scrollAmount : scrollAmount,
+      behavior: 'smooth',
+    });
+  };
 
   // Format input angka menjadi ribuan dengan prefix Rp
   const handleAmountInput = (e: InputEvent) => {
@@ -119,10 +129,34 @@ export const ExpenseForm: Component = () => {
         </div>
       </div>
 
-      {/* PILIHAN KATEGORI (HORIZONTAL SCROLL CHIPS) */}
+      {/* PILIHAN KATEGORI (3 ROW GRID, SWIPEABLE & NEXT/PREV) */}
       <div class="mt-4">
-        <label class="text-xs font-semibold text-warm-mute block mb-2">Pilih Kategori</label>
-        <div class="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+        <div class="flex items-center justify-between mb-2">
+          <label class="text-xs font-semibold text-warm-mute">Pilih Kategori</label>
+          <div class="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => scrollCategories('left')}
+              class="p-1 rounded-full bg-warm-subtle text-warm-ink hover:bg-warm-primary/30 transition-colors active:scale-95"
+              aria-label="Kategori Sebelumnya"
+            >
+              <ChevronLeft class="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollCategories('right')}
+              class="p-1 rounded-full bg-warm-subtle text-warm-ink hover:bg-warm-primary/30 transition-colors active:scale-95"
+              aria-label="Kategori Selanjutnya"
+            >
+              <ChevronRight class="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+
+        <div
+          ref={categorySliderRef}
+          class="grid grid-rows-3 grid-flow-col auto-cols-max gap-2 overflow-x-auto pb-1 no-scrollbar scroll-smooth snap-x"
+        >
           <For each={categories()}>
             {(cat) => {
               const isSelected = () => selectedCategory() === cat.name;
@@ -130,7 +164,7 @@ export const ExpenseForm: Component = () => {
                 <button
                   type="button"
                   onClick={() => setSelectedCategory(cat.name)}
-                  class={`flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold shrink-0 transition-all border ${
+                  class={`snap-start flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold shrink-0 transition-all border ${
                     isSelected()
                       ? 'bg-warm-primary text-white border-warm-primary shadow-sm scale-100'
                       : 'bg-warm-subtle text-warm-ink border-warm-border hover:border-warm-primary/50'
@@ -149,7 +183,7 @@ export const ExpenseForm: Component = () => {
           <button
             type="button"
             onClick={() => setShowAddModal(true)}
-            class="flex items-center gap-1 px-3 py-2 rounded-full text-xs font-semibold shrink-0 transition-all border border-dashed border-warm-primary text-warm-primary bg-warm-card hover:bg-warm-subtle/50"
+            class="snap-start flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold shrink-0 transition-all border border-dashed border-warm-primary text-warm-primary bg-warm-card hover:bg-warm-subtle/50"
           >
             <Plus class="w-3.5 h-3.5" />
             <span>Tambah</span>
