@@ -1,10 +1,14 @@
-import { Component, createSignal, For } from 'solid-js';
-import { ExpenseCategory } from '../types';
+import { Component, createSignal, createMemo, Show, For } from 'solid-js';
+import { Category, ExpenseCategory } from '../types';
 import { addExpense } from '../stores/expenseStore';
 import { categories } from '../stores/categoryStore';
 import { CategoryIcon } from './CategoryIcon';
 import { AddCategoryModal } from './AddCategoryModal';
 import { Check, MessageSquare, Plus, ChevronLeft, ChevronRight } from 'lucide-solid';
+
+type CategoryPickerItem =
+  | { type: 'category'; data: Category }
+  | { type: 'add' };
 
 export const ExpenseForm: Component = () => {
   const [rawAmount, setRawAmount] = createSignal<string>('');
@@ -14,9 +18,31 @@ export const ExpenseForm: Component = () => {
   const [showAddModal, setShowAddModal] = createSignal<boolean>(false);
   let categorySliderRef: HTMLDivElement | undefined;
 
+  const allCategoryItems = createMemo<CategoryPickerItem[]>(() => {
+    const list: CategoryPickerItem[] = categories().map((c) => ({ type: 'category', data: c }));
+    list.push({ type: 'add' });
+    return list;
+  });
+
+  // Arrow < > hanya muncul jika item kategori lebih dari 9
+  const showArrows = createMemo(() => allCategoryItems().length > 9);
+
+  // Pagination flex max 3 row (~9 items per view/page)
+  const categoryPages = createMemo(() => {
+    const items = allCategoryItems();
+    if (items.length <= 9) {
+      return [items];
+    }
+    const chunks: CategoryPickerItem[][] = [];
+    for (let i = 0; i < items.length; i += 9) {
+      chunks.push(items.slice(i, i + 9));
+    }
+    return chunks;
+  });
+
   const scrollCategories = (direction: 'left' | 'right') => {
     if (!categorySliderRef) return;
-    const scrollAmount = categorySliderRef.clientWidth * 0.75;
+    const scrollAmount = categorySliderRef.clientWidth;
     categorySliderRef.scrollBy({
       left: direction === 'left' ? -scrollAmount : scrollAmount,
       behavior: 'smooth',
@@ -129,65 +155,78 @@ export const ExpenseForm: Component = () => {
         </div>
       </div>
 
-      {/* PILIHAN KATEGORI (3 ROW GRID, SWIPEABLE & NEXT/PREV) */}
+      {/* PILIHAN KATEGORI (FLEX WRAP, MAX 3 ROW, ARROW JIKA > 9 ITEM) */}
       <div class="mt-4">
         <div class="flex items-center justify-between mb-2">
           <label class="text-xs font-semibold text-warm-mute">Pilih Kategori</label>
-          <div class="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => scrollCategories('left')}
-              class="p-1 rounded-full bg-warm-subtle text-warm-ink hover:bg-warm-primary/30 transition-colors active:scale-95"
-              aria-label="Kategori Sebelumnya"
-            >
-              <ChevronLeft class="w-3.5 h-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => scrollCategories('right')}
-              class="p-1 rounded-full bg-warm-subtle text-warm-ink hover:bg-warm-primary/30 transition-colors active:scale-95"
-              aria-label="Kategori Selanjutnya"
-            >
-              <ChevronRight class="w-3.5 h-3.5" />
-            </button>
-          </div>
+          <Show when={showArrows()}>
+            <div class="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => scrollCategories('left')}
+                class="p-1 rounded-full bg-warm-subtle text-warm-ink hover:bg-warm-primary/30 transition-colors active:scale-95"
+                aria-label="Kategori Sebelumnya"
+              >
+                <ChevronLeft class="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollCategories('right')}
+                class="p-1 rounded-full bg-warm-subtle text-warm-ink hover:bg-warm-primary/30 transition-colors active:scale-95"
+                aria-label="Kategori Selanjutnya"
+              >
+                <ChevronRight class="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </Show>
         </div>
 
         <div
           ref={categorySliderRef}
-          class="grid grid-rows-3 grid-flow-col auto-cols-max gap-2 overflow-x-auto pb-1 no-scrollbar scroll-smooth snap-x"
+          class="flex overflow-x-auto snap-x snap-mandatory no-scrollbar scroll-smooth w-full"
         >
-          <For each={categories()}>
-            {(cat) => {
-              const isSelected = () => selectedCategory() === cat.name;
-              return (
-                <button
-                  type="button"
-                  onClick={() => setSelectedCategory(cat.name)}
-                  class={`snap-start flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold shrink-0 transition-all border ${
-                    isSelected()
-                      ? 'bg-warm-primary text-white border-warm-primary shadow-sm scale-100'
-                      : 'bg-warm-subtle text-warm-ink border-warm-border hover:border-warm-primary/50'
-                  }`}
-                >
-                  <span style={{ color: isSelected() ? '#ffffff' : cat.color }}>
-                    <CategoryIcon name={cat.icon} class="w-3.5 h-3.5" />
-                  </span>
-                  <span>{cat.name}</span>
-                </button>
-              );
-            }}
-          </For>
+          <For each={categoryPages()}>
+            {(pageItems) => (
+              <div class="w-full shrink-0 snap-start flex flex-wrap gap-2 content-start min-h-[105px]">
+                <For each={pageItems}>
+                  {(item) => {
+                    if (item.type === 'category') {
+                      const cat = item.data;
+                      const isSelected = () => selectedCategory() === cat.name;
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedCategory(cat.name)}
+                          class={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all border ${
+                            isSelected()
+                              ? 'bg-warm-primary text-white border-warm-primary shadow-sm scale-100'
+                              : 'bg-warm-subtle text-warm-ink border-warm-border hover:border-warm-primary/50'
+                          }`}
+                        >
+                          <span style={{ color: isSelected() ? '#ffffff' : cat.color }}>
+                            <CategoryIcon name={cat.icon} class="w-3.5 h-3.5" />
+                          </span>
+                          <span class="max-w-[110px] truncate">{cat.name}</span>
+                        </button>
+                      );
+                    }
 
-          {/* Tombol Tambah Kategori */}
-          <button
-            type="button"
-            onClick={() => setShowAddModal(true)}
-            class="snap-start flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold shrink-0 transition-all border border-dashed border-warm-primary text-warm-primary bg-warm-card hover:bg-warm-subtle/50"
-          >
-            <Plus class="w-3.5 h-3.5" />
-            <span>Tambah</span>
-          </button>
+                    // Tombol Tambah Kategori
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => setShowAddModal(true)}
+                        class="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all border border-dashed border-warm-primary text-warm-primary bg-warm-card hover:bg-warm-subtle/50"
+                      >
+                        <Plus class="w-3.5 h-3.5" />
+                        <span>Tambah</span>
+                      </button>
+                    );
+                  }}
+                </For>
+              </div>
+            )}
+          </For>
         </div>
       </div>
 
