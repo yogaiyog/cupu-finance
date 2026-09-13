@@ -1,8 +1,18 @@
 import Dexie, { Table } from 'dexie';
-import { Expense } from '../types';
+import { Expense, Category } from '../types';
+
+export const DEFAULT_CATEGORIES: Category[] = [
+  { id: 'cat_makanan', name: 'Makanan', color: '#d48b6a', softColor: '#faeae1', icon: 'Utensils', isDefault: true, order: 1 },
+  { id: 'cat_transport', name: 'Transport', color: '#7097c2', softColor: '#e8eff7', icon: 'Car', isDefault: true, order: 2 },
+  { id: 'cat_belanja', name: 'Belanja', color: '#a688b8', softColor: '#f3edf7', icon: 'ShoppingBag', isDefault: true, order: 3 },
+  { id: 'cat_tagihan', name: 'Tagihan', color: '#c47171', softColor: '#fae8e8', icon: 'Receipt', isDefault: true, order: 4 },
+  { id: 'cat_hiburan', name: 'Hiburan', color: '#c77d99', softColor: '#f7eaef', icon: 'Film', isDefault: true, order: 5 },
+  { id: 'cat_lainnya', name: 'Lainnya', color: '#8d877e', softColor: '#eeebe6', icon: 'MoreHorizontal', isDefault: true, order: 6 },
+];
 
 export class CupuDatabase extends Dexie {
   expenses!: Table<Expense, string>;
+  categories!: Table<Category, string>;
 
   constructor() {
     super('CupuFinanceDB');
@@ -11,6 +21,51 @@ export class CupuDatabase extends Dexie {
     this.version(1).stores({
       expenses: 'id, date, category, updated_at, is_deleted, sync_status, [date+is_deleted]'
     });
+
+    this.version(2).stores({
+      expenses: 'id, date, category, updated_at, is_deleted, sync_status, [date+is_deleted]',
+      categories: 'id, name, order, isDefault'
+    }).upgrade(async (tx) => {
+      const catTable = tx.table<Category, string>('categories');
+      await catTable.bulkPut(DEFAULT_CATEGORIES);
+    });
+
+    this.on('ready', async () => {
+      const count = await this.categories.count();
+      if (count === 0) {
+        await this.categories.bulkPut(DEFAULT_CATEGORIES);
+      }
+    });
+  }
+
+  /**
+   * Mengambil seluruh daftar kategori (diurutkan berdasarkan order)
+   */
+  async getAllCategories(): Promise<Category[]> {
+    const cats = await this.categories.toArray();
+    if (cats.length === 0) {
+      await this.categories.bulkPut(DEFAULT_CATEGORIES);
+      return [...DEFAULT_CATEGORIES];
+    }
+    return cats.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+  }
+
+  /**
+   * Menyimpan atau memperbarui satu kategori
+   */
+  async saveCategory(category: Category): Promise<void> {
+    await this.categories.put(category);
+  }
+
+  /**
+   * Menghapus kategori kustom berdasarkan ID (kategori default tidak boleh dihapus)
+   */
+  async deleteCategory(id: string): Promise<void> {
+    const cat = await this.categories.get(id);
+    if (cat?.isDefault) {
+      throw new Error('Kategori bawaan tidak boleh dihapus');
+    }
+    await this.categories.delete(id);
   }
 
   /**

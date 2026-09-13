@@ -1,10 +1,14 @@
-export type ExpenseCategory =
-  | 'Makanan'
-  | 'Transport'
-  | 'Belanja'
-  | 'Tagihan'
-  | 'Hiburan'
-  | 'Lainnya';
+export interface Category {
+  id: string;
+  name: string;
+  color: string;
+  softColor: string;
+  icon: string;
+  isDefault?: boolean;
+  order?: number;
+}
+
+export type ExpenseCategory = string;
 
 export interface Expense {
   id: string;              // UUID v4
