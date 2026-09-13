@@ -157,12 +157,14 @@ function ensureStatistikSheet(ss) {
       // Rentang Tanggal di bagian atas
       statSheet.getRange("A2:D2").setValues([[
         "Periode Mulai:",
-        '=IFERROR(MIN(Expenses!B2:B), TEXT(TODAY(), "yyyy-mm-01"))',
+        '=IF(COUNT(Expenses!B2:B)>0, TEXT(MIN(Expenses!B2:B), "yyyy-mm-dd"), TEXT(TODAY(), "yyyy-mm-01"))',
         "Periode Selesai:",
         '=TEXT(TODAY(), "yyyy-mm-dd")'
       ]]);
       statSheet.getRange("A2").setFontWeight("bold").setBackground("#e8e4df");
+      statSheet.getRange("B2").setNumberFormat("yyyy-mm-dd").setHorizontalAlignment("center");
       statSheet.getRange("C2").setFontWeight("bold").setBackground("#e8e4df");
+      statSheet.getRange("D2").setNumberFormat("yyyy-mm-dd").setHorizontalAlignment("center");
       
       // KPI Header (Baris 4)
       statSheet.getRange("A4:B4").setValues([["Indikator", "Nilai (Sesuai Periode)"]])

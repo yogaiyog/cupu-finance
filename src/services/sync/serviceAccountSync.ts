@@ -315,6 +315,25 @@ export class ServiceAccountSyncProvider implements SyncProvider {
             fields: 'gridProperties.frozenRowCount',
           },
         },
+        // Format kolom Tanggal (B) sebagai Date
+        {
+          repeatCell: {
+            range: {
+              sheetId: expensesSheetId,
+              startRowIndex: 1,
+              endRowIndex: 2000,
+              startColumnIndex: 1,
+              endColumnIndex: 2,
+            },
+            cell: {
+              userEnteredFormat: {
+                numberFormat: { type: 'DATE', pattern: 'yyyy-mm-dd' },
+                horizontalAlignment: 'CENTER',
+              },
+            },
+            fields: 'userEnteredFormat(numberFormat,horizontalAlignment)',
+          },
+        },
         // Format kolom amount (C) sebagai Rupiah
         {
           repeatCell: {
@@ -467,7 +486,7 @@ export class ServiceAccountSyncProvider implements SyncProvider {
         ['📊 RINGKASAN & STATISTIK KEUANGAN', '', '', ''],
         [
           'Periode Mulai:',
-          '=IFERROR(MIN(Expenses!B2:B), TEXT(TODAY(), "yyyy-mm-01"))',
+          '=IF(COUNT(Expenses!B2:B)>0, TEXT(MIN(Expenses!B2:B), "yyyy-mm-dd"), TEXT(TODAY(), "yyyy-mm-01"))',
           'Periode Selesai:',
           '=TEXT(TODAY(), "yyyy-mm-dd")',
         ],
@@ -525,6 +544,30 @@ export class ServiceAccountSyncProvider implements SyncProvider {
           body: JSON.stringify({ values: rows }),
         }
       );
+    } else {
+      // Periksa apakah B2 masih bernilai angka serial lama (misal 46266) dan perbaiki otomatis
+      try {
+        const checkB2Res = await fetch(
+          `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Statistik!B2?valueRenderOption=FORMATTED_VALUE`,
+          { headers: authHeaders }
+        );
+        const b2Data = await checkB2Res.json().catch(() => ({}));
+        const valB2 = String(b2Data.values?.[0]?.[0] || '').trim();
+        if (/^\d{5}$/.test(valB2)) {
+          await fetch(
+            `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Statistik!B2?valueInputOption=USER_ENTERED`,
+            {
+              method: 'PUT',
+              headers: authHeaders,
+              body: JSON.stringify({
+                values: [['=IF(COUNT(Expenses!B2:B)>0, TEXT(MIN(Expenses!B2:B), "yyyy-mm-dd"), TEXT(TODAY(), "yyyy-mm-01"))']],
+              }),
+            }
+          );
+        }
+      } catch {
+        // ignore
+      }
     }
 
     // 3. Cek apakah chart sudah ada
@@ -585,6 +628,43 @@ export class ServiceAccountSyncProvider implements SyncProvider {
             },
           },
           fields: 'userEnteredFormat(backgroundColor,textFormat)',
+        },
+      },
+      // Format Tanggal dan Align B2 (Periode Mulai) & D2 (Periode Selesai)
+      {
+        repeatCell: {
+          range: {
+            sheetId: statSheetId,
+            startRowIndex: 1,
+            endRowIndex: 2,
+            startColumnIndex: 1,
+            endColumnIndex: 2,
+          },
+          cell: {
+            userEnteredFormat: {
+              numberFormat: { type: 'DATE', pattern: 'yyyy-mm-dd' },
+              horizontalAlignment: 'CENTER',
+            },
+          },
+          fields: 'userEnteredFormat(numberFormat,horizontalAlignment)',
+        },
+      },
+      {
+        repeatCell: {
+          range: {
+            sheetId: statSheetId,
+            startRowIndex: 1,
+            endRowIndex: 2,
+            startColumnIndex: 3,
+            endColumnIndex: 4,
+          },
+          cell: {
+            userEnteredFormat: {
+              numberFormat: { type: 'DATE', pattern: 'yyyy-mm-dd' },
+              horizontalAlignment: 'CENTER',
+            },
+          },
+          fields: 'userEnteredFormat(numberFormat,horizontalAlignment)',
         },
       },
       // Header KPI (Baris 4, 0-indexed 3)
