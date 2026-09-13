@@ -9,4 +9,10 @@ export default defineConfig({
   build: {
     target: 'esnext',
   },
+  // @ts-ignore
+  test: {
+    environment: 'node',
+    globals: true,
+    setupFiles: ['./tests/setup.ts'],
+  },
 });
