@@ -42,6 +42,8 @@ export interface AppSettings {
   monthlyIncome?: number;      // Penghasilan bulanan user
   currentBalance?: number;     // Sisa uang saat ini sampai akhir bulan
   dailyBudget?: number;        // Budget batas harian rekomendasi
+  initialBalance?: number;     // Sisa uang saat onboard
+  initialBalanceMonth?: string;// Bulan saat onboard (YYYY-MM)
 }
 
 export interface CategorySummary {

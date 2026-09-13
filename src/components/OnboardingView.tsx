@@ -6,12 +6,12 @@ import {
   setMonthlyIncome,
   setCurrentBalance,
   setDailyBudget,
+  setInitialBalance,
   setServiceAccountConfig,
   setSpreadsheetId,
 } from '../stores/settingsStore';
 import { serviceAccountSyncProvider } from '../services/sync/serviceAccountSync';
 import { ServiceAccountGuideModal } from './ServiceAccountGuideModal';
-import { addExpense } from '../stores/expenseStore';
 import logoImg from '../assets/logo.png';
 import {
   FileSpreadsheet,
@@ -174,17 +174,9 @@ export const OnboardingView: Component<OnboardingViewProps> = (props) => {
       await setDailyBudget(dailyBudgetRemaining());
     }
 
-    // Otomatis mencatat pengeluaran sebesar penghasilan - sisa uang jika ada selisih
-    if (inc > 0 && bal > 0 && inc > bal) {
-      const diff = inc - bal;
-      const todayStr = new Date().toISOString().split('T')[0];
-      await addExpense({
-        amount: diff,
-        category: 'Lainnya',
-        note: 'pengeluaran terakhir',
-        date: todayStr,
-      });
-    }
+    const now = new Date();
+    const currentYearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    await setInitialBalance(bal > 0 ? bal : inc, currentYearMonth);
 
     await setHasSeenOnboarding(true);
     if (props.onComplete) {
@@ -235,17 +227,9 @@ export const OnboardingView: Component<OnboardingViewProps> = (props) => {
           await setDailyBudget(dailyBudgetRemaining());
         }
 
-        // Otomatis mencatat pengeluaran sebesar penghasilan - sisa uang jika ada selisih
-        if (inc > 0 && bal > 0 && inc > bal) {
-          const diff = inc - bal;
-          const todayStr = new Date().toISOString().split('T')[0];
-          await addExpense({
-            amount: diff,
-            category: 'Lainnya',
-            note: 'pengeluaran terakhir',
-            date: todayStr,
-          });
-        }
+        const now = new Date();
+        const currentYearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        await setInitialBalance(bal > 0 ? bal : inc, currentYearMonth);
 
         await setHasSeenOnboarding(true);
         setShowConnectModal(false);

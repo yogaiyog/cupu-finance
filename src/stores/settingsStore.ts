@@ -116,4 +116,11 @@ export async function setDailyBudget(budget: number): Promise<void> {
   await updateSettings({ dailyBudget: budget });
 }
 
+export async function setInitialBalance(balance: number, month?: string): Promise<void> {
+  await updateSettings({
+    initialBalance: balance,
+    initialBalanceMonth: month || '',
+  });
+}
+
 export { settings, isLoadingSettings };

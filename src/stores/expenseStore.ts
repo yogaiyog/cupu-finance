@@ -213,6 +213,7 @@ export const todayExpensesTotal = createMemo(() => {
 export interface DynamicBudgetCalculation {
   totalMonthlyIncome: number;
   spentBeforeToday: number;
+  untrackedPriorExpense?: number;
   remainingBalanceBeforeToday: number;
   daysRemaining: number;
   totalDaysInMonth: number;
@@ -231,6 +232,8 @@ export function calculateDynamicDailyBudget(params: {
   monthlyIncome: number;
   expenses: Expense[];
   now?: Date;
+  initialBalance?: number;
+  initialBalanceMonth?: string;
 }): DynamicBudgetCalculation {
   const now = params.now || new Date();
   const year = now.getFullYear();
@@ -242,7 +245,8 @@ export function calculateDynamicDailyBudget(params: {
   const daysRemaining = Math.max(1, totalDaysInMonth - currentDay + 1);
 
   const pad = (n: number) => String(n).padStart(2, '0');
-  const todayStr = `${year}-${pad(month)}-${pad(currentDay)}`;
+  const yearMonthStr = `${year}-${pad(month)}`;
+  const todayStr = `${yearMonthStr}-${pad(currentDay)}`;
 
   let spentBeforeToday = 0;
   let spentToday = 0;
@@ -250,7 +254,13 @@ export function calculateDynamicDailyBudget(params: {
   params.expenses.forEach((item) => {
     if (item.is_deleted) return;
 
-    if (item.date < todayStr || (item.date === todayStr && item.note === 'pengeluaran terakhir')) {
+    // Abaikan catatan dummy pengeluaran terakhir jika ada
+    if (item.note === 'pengeluaran terakhir') return;
+
+    // Pastikan hanya menghitung pengeluaran di bulan berjalan
+    if (!item.date.startsWith(yearMonthStr)) return;
+
+    if (item.date < todayStr) {
       spentBeforeToday += item.amount;
     } else if (item.date === todayStr) {
       spentToday += item.amount;
@@ -258,7 +268,23 @@ export function calculateDynamicDailyBudget(params: {
   });
 
   const totalMonthlyIncome = params.monthlyIncome || 0;
-  const remainingBalanceBeforeToday = Math.max(0, totalMonthlyIncome - spentBeforeToday);
+
+  // Cek apakah ada pengeluaran sebelum onboarding (hanya berlaku pada bulan onboarding)
+  let untrackedPriorExpense = 0;
+  if (
+    params.initialBalance !== undefined &&
+    params.initialBalance > 0 &&
+    (!params.initialBalanceMonth || params.initialBalanceMonth === yearMonthStr)
+  ) {
+    if (totalMonthlyIncome > params.initialBalance) {
+      untrackedPriorExpense = totalMonthlyIncome - params.initialBalance;
+    }
+  }
+
+  const remainingBalanceBeforeToday = Math.max(
+    0,
+    totalMonthlyIncome - untrackedPriorExpense - spentBeforeToday
+  );
 
   const calculatedDailyBudget =
     daysRemaining > 0 ? Math.round(remainingBalanceBeforeToday / daysRemaining) : 0;
@@ -270,6 +296,7 @@ export function calculateDynamicDailyBudget(params: {
   return {
     totalMonthlyIncome,
     spentBeforeToday,
+    untrackedPriorExpense,
     remainingBalanceBeforeToday,
     daysRemaining,
     totalDaysInMonth,
@@ -287,9 +314,13 @@ export function calculateDynamicDailyBudget(params: {
  */
 export const dynamicDailyBudgetInfo = createMemo<DynamicBudgetCalculation>(() => {
   const currentIncome = settings().monthlyIncome || 0;
+  const initBal = settings().initialBalance ?? settings().currentBalance;
+  const initMonth = settings().initialBalanceMonth;
   return calculateDynamicDailyBudget({
     monthlyIncome: currentIncome,
     expenses: expenses(),
+    initialBalance: initBal,
+    initialBalanceMonth: initMonth,
   });
 });
 

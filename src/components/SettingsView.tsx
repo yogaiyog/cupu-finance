@@ -736,6 +736,8 @@ export const SettingsView: Component = () => {
                       monthlyIncome: 0,
                       currentBalance: 0,
                       dailyBudget: 0,
+                      initialBalance: 0,
+                      initialBalanceMonth: '',
                     });
                     setShowClearModal(false);
                     setClearConfirmText('');

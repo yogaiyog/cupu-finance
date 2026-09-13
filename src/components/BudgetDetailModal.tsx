@@ -78,10 +78,23 @@ export const BudgetDetailModal: Component<BudgetDetailModalProps> = (props) => {
                 </strong>
               </div>
 
+              <Show when={(info().untrackedPriorExpense || 0) > 0}>
+                <div class="flex items-center justify-between">
+                  <span class="text-warm-mute flex items-center gap-1.5 font-medium pl-2 text-[11px]">
+                    ↳ Sebelum gabung aplikasi
+                  </span>
+                  <span class="text-cat-bills font-medium tabular-nums text-[11px]">
+                    - {formatRupiah(info().untrackedPriorExpense || 0)}
+                  </span>
+                </div>
+              </Show>
+
               <div class="flex items-center justify-between">
                 <span class="text-warm-mute flex items-center gap-1.5 font-medium">
                   <TrendingDown class="w-3.5 h-3.5 text-cat-bills" />
-                  Terpakai s.d. kemarin
+                  {(info().untrackedPriorExpense || 0) > 0
+                    ? 'Tercatat di aplikasi s.d. kemarin'
+                    : 'Terpakai s.d. kemarin'}
                 </span>
                 <span class="text-cat-bills font-bold tabular-nums">
                   - {formatRupiah(info().spentBeforeToday)}
