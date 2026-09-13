@@ -186,12 +186,25 @@ export class ServiceAccountSyncProvider implements SyncProvider {
 
       const metaData = await metaRes.json();
       const sheets = metaData.sheets || [];
-      const hasExpensesTab = sheets.some((s: any) => s.properties?.title === 'Expenses');
+
+      // Ambil daftar kategori dari database (bawaan + custom)
+      const defaultNames = ['Makanan', 'Transportasi', 'Belanja', 'Tagihan', 'Hiburan', 'Lainnya'];
+      const catNames = [...defaultNames];
+      try {
+        const allCats = await db.getAllCategories();
+        for (const c of allCats) {
+          if (!catNames.includes(c.name)) {
+            catNames.push(c.name);
+          }
+        }
+      } catch {
+        // fallback
+      }
 
       // Pastikan tab Expenses dan Statistik tersedia
-      await this.ensureExpensesSheet(token, spreadsheetId, hasExpensesTab);
+      await this.ensureExpensesSheet(token, spreadsheetId, sheets, catNames);
       try {
-        await this.ensureStatisticsSheet(token, spreadsheetId, sheets);
+        await this.ensureStatisticsSheet(token, spreadsheetId, sheets, catNames);
       } catch (err) {
         console.warn('Gagal menyiapkan sheet statistik:', err);
       }
@@ -209,17 +222,25 @@ export class ServiceAccountSyncProvider implements SyncProvider {
   }
 
   /**
-   * Pastikan tab 'Expenses' dan header baris pertama tersedia
+   * Pastikan tab 'Expenses' dan header baris pertama tersedia serta diformat
    */
-  private async ensureExpensesSheet(token: string, spreadsheetId: string, hasExpensesTab: boolean): Promise<void> {
+  private async ensureExpensesSheet(
+    token: string,
+    spreadsheetId: string,
+    sheets: any[],
+    catNames: string[]
+  ): Promise<void> {
     const authHeaders = {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
     };
 
+    let expensesSheet = sheets.find((s: any) => s.properties?.title === 'Expenses');
+    let expensesSheetId: number | undefined = expensesSheet?.properties?.sheetId;
+
     // Buat tab 'Expenses' jika belum ada
-    if (!hasExpensesTab) {
-      await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`, {
+    if (!expensesSheet) {
+      const addRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`, {
         method: 'POST',
         headers: authHeaders,
         body: JSON.stringify({
@@ -234,6 +255,10 @@ export class ServiceAccountSyncProvider implements SyncProvider {
           ],
         }),
       });
+      if (addRes.ok) {
+        const addData = await addRes.json();
+        expensesSheetId = addData.replies?.[0]?.addSheet?.properties?.sheetId;
+      }
     }
 
     // Cek apakah header di baris 1 sudah ada
@@ -255,12 +280,135 @@ export class ServiceAccountSyncProvider implements SyncProvider {
         }
       );
     }
+
+    // Format header Expenses + Dropdown Kategori + Freeze Baris 1
+    if (expensesSheetId !== undefined) {
+      const expensesFormatRequests: any[] = [
+        // Style Header baris 1: background warmsoft, teks tebal
+        {
+          repeatCell: {
+            range: {
+              sheetId: expensesSheetId,
+              startRowIndex: 0,
+              endRowIndex: 1,
+              startColumnIndex: 0,
+              endColumnIndex: 7,
+            },
+            cell: {
+              userEnteredFormat: {
+                backgroundColor: { red: 0.91, green: 0.89, blue: 0.87 },
+                textFormat: { bold: true, foregroundColor: { red: 0.18, green: 0.16, blue: 0.15 } },
+              },
+            },
+            fields: 'userEnteredFormat(backgroundColor,textFormat)',
+          },
+        },
+        // Freeze baris 1 agar header tetap terlihat saat scroll
+        {
+          updateSheetProperties: {
+            properties: {
+              sheetId: expensesSheetId,
+              gridProperties: {
+                frozenRowCount: 1,
+              },
+            },
+            fields: 'gridProperties.frozenRowCount',
+          },
+        },
+        // Format kolom amount (C) sebagai Rupiah
+        {
+          repeatCell: {
+            range: {
+              sheetId: expensesSheetId,
+              startRowIndex: 1,
+              endRowIndex: 2000,
+              startColumnIndex: 2,
+              endColumnIndex: 3,
+            },
+            cell: {
+              userEnteredFormat: {
+                numberFormat: { type: 'CURRENCY', pattern: '"Rp "#,##0' },
+              },
+            },
+            fields: 'userEnteredFormat.numberFormat',
+          },
+        },
+        // Dropdown data validation pada kolom Kategori (D)
+        {
+          setDataValidation: {
+            range: {
+              sheetId: expensesSheetId,
+              startRowIndex: 1,
+              endRowIndex: 2000,
+              startColumnIndex: 3,
+              endColumnIndex: 4,
+            },
+            rule: {
+              condition: {
+                type: 'ONE_OF_LIST',
+                values: catNames.map((name) => ({ userEnteredValue: name })),
+              },
+              inputMessage: 'Pilih kategori pengeluaran',
+              strict: false,
+              showCustomUi: true,
+            },
+          },
+        },
+        // Lebar kolom rapi
+        {
+          updateDimensionProperties: {
+            range: { sheetId: expensesSheetId, dimension: 'COLUMNS', startIndex: 0, endIndex: 1 },
+            properties: { pixelSize: 100 },
+            fields: 'pixelSize',
+          },
+        },
+        {
+          updateDimensionProperties: {
+            range: { sheetId: expensesSheetId, dimension: 'COLUMNS', startIndex: 1, endIndex: 2 },
+            properties: { pixelSize: 110 },
+            fields: 'pixelSize',
+          },
+        },
+        {
+          updateDimensionProperties: {
+            range: { sheetId: expensesSheetId, dimension: 'COLUMNS', startIndex: 2, endIndex: 3 },
+            properties: { pixelSize: 130 },
+            fields: 'pixelSize',
+          },
+        },
+        {
+          updateDimensionProperties: {
+            range: { sheetId: expensesSheetId, dimension: 'COLUMNS', startIndex: 3, endIndex: 4 },
+            properties: { pixelSize: 140 },
+            fields: 'pixelSize',
+          },
+        },
+        {
+          updateDimensionProperties: {
+            range: { sheetId: expensesSheetId, dimension: 'COLUMNS', startIndex: 4, endIndex: 5 },
+            properties: { pixelSize: 220 },
+            fields: 'pixelSize',
+          },
+        },
+      ];
+
+      await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({ requests: expensesFormatRequests }),
+      }).catch((e) => console.warn('Gagal memformat sheet Expenses:', e));
+    }
   }
 
   /**
    * Pastikan tab 'Statistik' dan chart visual tersedia
    */
-  private async ensureStatisticsSheet(token: string, spreadsheetId: string, sheets: any[]): Promise<void> {
+  private async ensureStatisticsSheet(
+    token: string,
+    spreadsheetId: string,
+    sheets: any[],
+    catNames: string[]
+  ): Promise<void> {
     const authHeaders = {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
@@ -269,21 +417,7 @@ export class ServiceAccountSyncProvider implements SyncProvider {
     let statSheet = sheets.find((s: any) => s.properties?.title === 'Statistik');
     let statSheetId: number | undefined = statSheet?.properties?.sheetId;
 
-    // Ambil daftar kategori dari database (bawaan + custom)
-    const defaultNames = ['Makanan', 'Transportasi', 'Belanja', 'Tagihan', 'Hiburan', 'Lainnya'];
-    const catNames = [...defaultNames];
-    try {
-      const allCats = await db.getAllCategories();
-      for (const c of allCats) {
-        if (!catNames.includes(c.name)) {
-          catNames.push(c.name);
-        }
-      }
-    } catch {
-      // fallback
-    }
-
-    const endRow = 10 + catNames.length;
+    const endRow = 11 + catNames.length;
 
     // 1. Buat sheet 'Statistik' di index 0 jika belum ada
     if (!statSheet) {
@@ -321,50 +455,70 @@ export class ServiceAccountSyncProvider implements SyncProvider {
 
     // 2. Cek apakah formula sudah terisi di tab Statistik
     const checkRes = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Statistik!A1:B4`,
+      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Statistik!A1:B5`,
       { headers: authHeaders }
     );
     const checkData = await checkRes.json().catch(() => ({}));
     const needsValues = !checkData.values || checkData.values.length === 0 || !checkData.values[0]?.[0];
 
     if (needsValues) {
-      // Siapkan data baris formula otomatis
+      // Siapkan data baris formula dengan Filter Rentang Tanggal di bagian atas
       const rows: string[][] = [
-        ['📊 RINGKASAN & STATISTIK KEUANGAN', '', ''],
-        ['', '', ''],
-        ['Indikator', 'Nilai', ''],
-        ['Total Pengeluaran', '=SUMIFS(Expenses!C2:C, Expenses!G2:G, "<>TRUE")', ''],
+        ['📊 RINGKASAN & STATISTIK KEUANGAN', '', '', ''],
         [
-          'Pengeluaran Bulan Ini',
+          'Periode Mulai:',
+          '=IFERROR(MIN(Expenses!B2:B), TEXT(TODAY(), "yyyy-mm-01"))',
+          'Periode Selesai:',
+          '=TEXT(TODAY(), "yyyy-mm-dd")',
+        ],
+        ['', '', '', ''],
+        ['Indikator', 'Nilai (Sesuai Periode)', '', ''],
+        [
+          'Total Pengeluaran',
+          '=SUMIFS(Expenses!C2:C, Expenses!B2:B, ">=" & IF(ISBLANK($B$2), "1970-01-01", TEXT($B$2, "yyyy-mm-dd")), Expenses!B2:B, "<=" & IF(ISBLANK($D$2), "2099-12-31", TEXT($D$2, "yyyy-mm-dd")), Expenses!G2:G, "<>TRUE")',
+          '',
+          '',
+        ],
+        [
+          'Pengeluaran Bulan Berjalan',
           '=SUMIFS(Expenses!C2:C, Expenses!B2:B, ">=" & TEXT(TODAY(), "yyyy-mm-01"), Expenses!B2:B, "<=" & TEXT(EOMONTH(TODAY(), 0), "yyyy-mm-dd"), Expenses!G2:G, "<>TRUE")',
+          '',
           '',
         ],
         [
           'Rata-rata Harian',
-          '=IFERROR(B4 / MAX(1, COUNTUNIQUEIFS(Expenses!B2:B, Expenses!C2:C, ">0", Expenses!G2:G, "<>TRUE")), 0)',
+          '=IFERROR(B5 / MAX(1, COUNTUNIQUEIFS(Expenses!B2:B, Expenses!B2:B, ">=" & IF(ISBLANK($B$2), "1970-01-01", TEXT($B$2, "yyyy-mm-dd")), Expenses!B2:B, "<=" & IF(ISBLANK($D$2), "2099-12-31", TEXT($D$2, "yyyy-mm-dd")), Expenses!C2:C, ">0", Expenses!G2:G, "<>TRUE")), 0)',
+          '',
           '',
         ],
-        ['Jumlah Transaksi', '=COUNTIFS(Expenses!C2:C, ">0", Expenses!G2:G, "<>TRUE")', ''],
+        [
+          'Jumlah Transaksi',
+          '=COUNTIFS(Expenses!B2:B, ">=" & IF(ISBLANK($B$2), "1970-01-01", TEXT($B$2, "yyyy-mm-dd")), Expenses!B2:B, "<=" & IF(ISBLANK($D$2), "2099-12-31", TEXT($D$2, "yyyy-mm-dd")), Expenses!C2:C, ">0", Expenses!G2:G, "<>TRUE")',
+          '',
+          '',
+        ],
         [
           'Kategori Paling Boros',
-          `=IF(MAX(B11:B${endRow})>0, INDEX(A11:A${endRow}, MATCH(MAX(B11:B${endRow}), B11:B${endRow}, 0)), "-")`,
+          `=IF(MAX(B12:B${endRow})>0, INDEX(A12:A${endRow}, MATCH(MAX(B12:B${endRow}), B12:B${endRow}, 0)), "-")`,
+          '',
           '',
         ],
-        ['', '', ''],
-        ['Kategori', 'Total Pengeluaran', 'Porsi (%)'],
+        ['', '', '', ''],
+        ['Kategori', 'Total Pengeluaran', 'Porsi (%)', ''],
       ];
 
       for (let i = 0; i < catNames.length; i++) {
-        const r = 11 + i;
+        const r = 12 + i;
         rows.push([
           catNames[i],
-          `=SUMIFS(Expenses!$C$2:$C, Expenses!$D$2:$D, A${r}, Expenses!$G$2:$G, "<>TRUE")`,
-          `=IFERROR(B${r} / $B$4, 0)`,
+          `=SUMIFS(Expenses!$C$2:$C, Expenses!$D$2:$D, A${r}, Expenses!$B$2:$B, ">=" & IF(ISBLANK($B$2), "1970-01-01", TEXT($B$2, "yyyy-mm-dd")), Expenses!$B$2:$B, "<=" & IF(ISBLANK($D$2), "2099-12-31", TEXT($D$2, "yyyy-mm-dd")), Expenses!$G$2:$G, "<>TRUE")`,
+          `=IFERROR(B${r} / $B$5, 0)`,
+          '',
         ]);
       }
 
       await fetch(
-        `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Statistik!A1:C${endRow}?valueInputOption=USER_ENTERED`,
+        `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Statistik!A1:D${endRow}?valueInputOption=USER_ENTERED`,
         {
           method: 'PUT',
           headers: authHeaders,
@@ -386,7 +540,7 @@ export class ServiceAccountSyncProvider implements SyncProvider {
             startRowIndex: 0,
             endRowIndex: 1,
             startColumnIndex: 0,
-            endColumnIndex: 3,
+            endColumnIndex: 4,
           },
           cell: {
             userEnteredFormat: {
@@ -396,13 +550,50 @@ export class ServiceAccountSyncProvider implements SyncProvider {
           fields: 'userEnteredFormat.textFormat',
         },
       },
-      // Header KPI (Baris 3)
+      // Range Date Labels (Baris 2, Kolom A & C)
       {
         repeatCell: {
           range: {
             sheetId: statSheetId,
-            startRowIndex: 2,
-            endRowIndex: 3,
+            startRowIndex: 1,
+            endRowIndex: 2,
+            startColumnIndex: 0,
+            endColumnIndex: 1,
+          },
+          cell: {
+            userEnteredFormat: {
+              backgroundColor: { red: 0.94, green: 0.93, blue: 0.91 },
+              textFormat: { bold: true, fontSize: 10, foregroundColor: { red: 0.18, green: 0.16, blue: 0.15 } },
+            },
+          },
+          fields: 'userEnteredFormat(backgroundColor,textFormat)',
+        },
+      },
+      {
+        repeatCell: {
+          range: {
+            sheetId: statSheetId,
+            startRowIndex: 1,
+            endRowIndex: 2,
+            startColumnIndex: 2,
+            endColumnIndex: 3,
+          },
+          cell: {
+            userEnteredFormat: {
+              backgroundColor: { red: 0.94, green: 0.93, blue: 0.91 },
+              textFormat: { bold: true, fontSize: 10, foregroundColor: { red: 0.18, green: 0.16, blue: 0.15 } },
+            },
+          },
+          fields: 'userEnteredFormat(backgroundColor,textFormat)',
+        },
+      },
+      // Header KPI (Baris 4, 0-indexed 3)
+      {
+        repeatCell: {
+          range: {
+            sheetId: statSheetId,
+            startRowIndex: 3,
+            endRowIndex: 4,
             startColumnIndex: 0,
             endColumnIndex: 2,
           },
@@ -415,13 +606,13 @@ export class ServiceAccountSyncProvider implements SyncProvider {
           fields: 'userEnteredFormat(backgroundColor,textFormat)',
         },
       },
-      // Header Kategori (Baris 10)
+      // Header Kategori (Baris 11, 0-indexed 10)
       {
         repeatCell: {
           range: {
             sheetId: statSheetId,
-            startRowIndex: 9,
-            endRowIndex: 10,
+            startRowIndex: 10,
+            endRowIndex: 11,
             startColumnIndex: 0,
             endColumnIndex: 3,
           },
@@ -434,13 +625,13 @@ export class ServiceAccountSyncProvider implements SyncProvider {
           fields: 'userEnteredFormat(backgroundColor,textFormat)',
         },
       },
-      // Format Mata Uang B4:B6
+      // Format Mata Uang B5:B7 (0-indexed 4 to 7)
       {
         repeatCell: {
           range: {
             sheetId: statSheetId,
-            startRowIndex: 3,
-            endRowIndex: 6,
+            startRowIndex: 4,
+            endRowIndex: 7,
             startColumnIndex: 1,
             endColumnIndex: 2,
           },
@@ -452,13 +643,13 @@ export class ServiceAccountSyncProvider implements SyncProvider {
           fields: 'userEnteredFormat.numberFormat',
         },
       },
-      // Format Jumlah Transaksi B7
+      // Format Jumlah Transaksi B8 (0-indexed 7 to 8)
       {
         repeatCell: {
           range: {
             sheetId: statSheetId,
-            startRowIndex: 6,
-            endRowIndex: 7,
+            startRowIndex: 7,
+            endRowIndex: 8,
             startColumnIndex: 1,
             endColumnIndex: 2,
           },
@@ -470,12 +661,12 @@ export class ServiceAccountSyncProvider implements SyncProvider {
           fields: 'userEnteredFormat.numberFormat',
         },
       },
-      // Format Mata Uang Total Kategori B11:BendRow
+      // Format Mata Uang Total Kategori B12:BendRow (0-indexed 11 to endRow)
       {
         repeatCell: {
           range: {
             sheetId: statSheetId,
-            startRowIndex: 10,
+            startRowIndex: 11,
             endRowIndex: endRow,
             startColumnIndex: 1,
             endColumnIndex: 2,
@@ -488,12 +679,12 @@ export class ServiceAccountSyncProvider implements SyncProvider {
           fields: 'userEnteredFormat.numberFormat',
         },
       },
-      // Format Persentase C11:CendRow
+      // Format Persentase C12:CendRow (0-indexed 11 to endRow)
       {
         repeatCell: {
           range: {
             sheetId: statSheetId,
-            startRowIndex: 10,
+            startRowIndex: 11,
             endRowIndex: endRow,
             startColumnIndex: 2,
             endColumnIndex: 3,
@@ -524,14 +715,14 @@ export class ServiceAccountSyncProvider implements SyncProvider {
       {
         updateDimensionProperties: {
           range: { sheetId: statSheetId, dimension: 'COLUMNS', startIndex: 2, endIndex: 3 },
-          properties: { pixelSize: 100 },
+          properties: { pixelSize: 130 },
           fields: 'pixelSize',
         },
       },
       {
         updateDimensionProperties: {
           range: { sheetId: statSheetId, dimension: 'COLUMNS', startIndex: 3, endIndex: 4 },
-          properties: { pixelSize: 30 },
+          properties: { pixelSize: 140 },
           fields: 'pixelSize',
         },
       },
@@ -551,7 +742,7 @@ export class ServiceAccountSyncProvider implements SyncProvider {
                     sources: [
                       {
                         sheetId: statSheetId,
-                        startRowIndex: 10,
+                        startRowIndex: 11,
                         endRowIndex: endRow,
                         startColumnIndex: 0,
                         endColumnIndex: 1,
@@ -564,7 +755,7 @@ export class ServiceAccountSyncProvider implements SyncProvider {
                     sources: [
                       {
                         sheetId: statSheetId,
-                        startRowIndex: 10,
+                        startRowIndex: 11,
                         endRowIndex: endRow,
                         startColumnIndex: 1,
                         endColumnIndex: 2,
@@ -579,13 +770,13 @@ export class ServiceAccountSyncProvider implements SyncProvider {
               overlayPosition: {
                 anchorCell: {
                   sheetId: statSheetId,
-                  rowIndex: 2,
+                  rowIndex: 3,
                   columnIndex: 4,
                 },
-                offsetXPixels: 10,
+                offsetXPixels: 15,
                 offsetYPixels: 0,
                 widthPixels: 520,
-                heightPixels: 340,
+                heightPixels: 350,
               },
             },
           },
@@ -618,6 +809,17 @@ export class ServiceAccountSyncProvider implements SyncProvider {
         'Content-Type': 'application/json',
       };
 
+      const defaultNames = ['Makanan', 'Transportasi', 'Belanja', 'Tagihan', 'Hiburan', 'Lainnya'];
+      const catNames = [...defaultNames];
+      try {
+        const allCats = await db.getAllCategories();
+        for (const c of allCats) {
+          if (!catNames.includes(c.name)) {
+            catNames.push(c.name);
+          }
+        }
+      } catch {}
+
       // Pastikan tab Expenses dan Statistik tersedia
       try {
         const metaRes = await fetch(
@@ -627,11 +829,8 @@ export class ServiceAccountSyncProvider implements SyncProvider {
         if (metaRes.ok) {
           const metaData = await metaRes.json();
           const sheets = metaData.sheets || [];
-          const hasExpensesTab = sheets.some((s: any) => s.properties?.title === 'Expenses');
-          if (!hasExpensesTab) {
-            await this.ensureExpensesSheet(token, spreadsheetId, false);
-          }
-          await this.ensureStatisticsSheet(token, spreadsheetId, sheets);
+          await this.ensureExpensesSheet(token, spreadsheetId, sheets, catNames);
+          await this.ensureStatisticsSheet(token, spreadsheetId, sheets, catNames);
         }
       } catch (err) {
         console.warn('Gagal memeriksa/menyiapkan sheet statistik saat sync:', err);
@@ -653,7 +852,7 @@ export class ServiceAccountSyncProvider implements SyncProvider {
         existingRows = readData.values || [];
       } else {
         // Coba inisialisasi sheet jika belum ada
-        await this.ensureExpensesSheet(token, spreadsheetId, false);
+        await this.ensureExpensesSheet(token, spreadsheetId, [], catNames);
       }
 
       // Map ID ke nomor baris (baris 1 adalah header)
