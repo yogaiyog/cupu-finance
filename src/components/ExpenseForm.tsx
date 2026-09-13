@@ -6,10 +6,6 @@ import { CategoryIcon } from './CategoryIcon';
 import { AddCategoryModal } from './AddCategoryModal';
 import { Check, MessageSquare, Plus, ChevronLeft, ChevronRight, Search } from 'lucide-solid';
 
-type CategoryPickerItem =
-  | { type: 'category'; data: Category }
-  | { type: 'add' };
-
 export const ExpenseForm: Component = () => {
   const [rawAmount, setRawAmount] = createSignal<string>('');
   const [selectedCategory, setSelectedCategory] = createSignal<ExpenseCategory>('Makanan');
@@ -19,29 +15,23 @@ export const ExpenseForm: Component = () => {
   const [showAddModal, setShowAddModal] = createSignal<boolean>(false);
   let categorySliderRef: HTMLDivElement | undefined;
 
-  const filteredCategoryItems = createMemo<CategoryPickerItem[]>(() => {
+  const filteredCategories = createMemo<Category[]>(() => {
     const q = categorySearch().trim().toLowerCase();
     const cats = categories();
-    const matchingCats = q
-      ? cats.filter((c) => c.name.toLowerCase().includes(q))
-      : cats;
-
-    // + Tambah diletakkan di urutan pertama
-    const list: CategoryPickerItem[] = [{ type: 'add' }];
-    matchingCats.forEach((c) => list.push({ type: 'category', data: c }));
-    return list;
+    if (!q) return cats;
+    return cats.filter((c) => c.name.toLowerCase().includes(q));
   });
 
   // Arrow < > hanya muncul jika item kategori lebih dari 9
-  const showArrows = createMemo(() => filteredCategoryItems().length > 9);
+  const showArrows = createMemo(() => filteredCategories().length > 9);
 
   // Pagination flex max 3 row (~9 items per view/page)
   const categoryPages = createMemo(() => {
-    const items = filteredCategoryItems();
+    const items = filteredCategories();
     if (items.length <= 9) {
       return [items];
     }
-    const chunks: CategoryPickerItem[][] = [];
+    const chunks: Category[][] = [];
     for (let i = 0; i < items.length; i += 9) {
       chunks.push(items.slice(i, i + 9));
     }
@@ -67,12 +57,6 @@ export const ExpenseForm: Component = () => {
   const formattedDisplay = () => {
     if (!rawAmount()) return '';
     return Number(rawAmount()).toLocaleString('id-ID');
-  };
-
-  // Shortcut penambahan nominal cepat
-  const addQuickAmount = (val: number) => {
-    const current = Number(rawAmount()) || 0;
-    setRawAmount(String(current + val));
   };
 
   const handleClear = () => {
@@ -129,37 +113,24 @@ export const ExpenseForm: Component = () => {
             </button>
           )}
         </div>
-
-        {/* Quick Amount Chips */}
-        <div class="flex items-center gap-1.5 mt-3">
-          <button
-            type="button"
-            onClick={() => addQuickAmount(1000)}
-            class="px-2.5 py-1 text-xs rounded-full bg-warm-subtle text-warm-ink hover:bg-warm-primary/30 transition-colors font-medium active:scale-95"
-          >
-            +1k
-          </button>
-          <button
-            type="button"
-            onClick={() => addQuickAmount(10000)}
-            class="px-2.5 py-1 text-xs rounded-full bg-warm-subtle text-warm-ink hover:bg-warm-primary/30 transition-colors font-medium active:scale-95"
-          >
-            +10k
-          </button>
-          <button
-            type="button"
-            onClick={() => addQuickAmount(100000)}
-            class="px-2.5 py-1 text-xs rounded-full bg-warm-subtle text-warm-ink hover:bg-warm-primary/30 transition-colors font-medium active:scale-95"
-          >
-            +100k
-          </button>
-        </div>
       </div>
 
-      {/* PILIHAN KATEGORI (FLEX WRAP, MAX 3 ROW, SEARCH & CONDITIONAL ARROWS) */}
+      {/* PILIHAN KATEGORI */}
       <div class="mt-4">
-        <div class="flex items-center justify-between gap-2 mb-2">
-          <label class="text-xs font-semibold text-warm-mute shrink-0">Pilih Kategori</label>
+        <div class="flex items-center justify-between gap-2 mb-2.5">
+          {/* Label + Tombol Kecil Tambah Kategori */}
+          <div class="flex items-center gap-2">
+            <label class="text-xs font-semibold text-warm-mute shrink-0">Pilih Kategori</label>
+            <button
+              type="button"
+              onClick={() => setShowAddModal(true)}
+              class="flex items-center gap-1 px-2 py-0.5 rounded-full border border-dashed border-warm-primary/70 text-warm-primary hover:bg-warm-primary/10 text-[11px] font-medium transition-colors active:scale-95"
+              title="Tambah Kategori Baru"
+            >
+              <Plus class="w-3 h-3" />
+              <span>Kategori</span>
+            </button>
+          </div>
           
           <div class="flex items-center gap-1.5 ml-auto">
             {/* Input Pencarian Kategori */}
@@ -170,7 +141,7 @@ export const ExpenseForm: Component = () => {
                 placeholder="Cari..."
                 value={categorySearch()}
                 onInput={(e) => setCategorySearch(e.currentTarget.value)}
-                class="w-24 focus:w-32 transition-all duration-200 bg-warm-subtle/70 border border-warm-border/80 rounded-full pl-7 pr-5 py-1 text-xs text-warm-ink placeholder:text-warm-faint focus:outline-none focus:border-warm-primary"
+                class="w-20 focus:w-28 transition-all duration-200 bg-warm-subtle/70 border border-warm-border/80 rounded-full pl-7 pr-5 py-1 text-xs text-warm-ink placeholder:text-warm-faint focus:outline-none focus:border-warm-primary"
               />
               <Show when={categorySearch()}>
                 <button
@@ -215,22 +186,7 @@ export const ExpenseForm: Component = () => {
             {(pageItems) => (
               <div class="w-full shrink-0 snap-start flex flex-wrap gap-2 content-start min-h-[92px] py-1">
                 <For each={pageItems}>
-                  {(item) => {
-                    if (item.type === 'add') {
-                      // Tombol Tambah Kategori di Urutan Pertama
-                      return (
-                        <button
-                          type="button"
-                          onClick={() => setShowAddModal(true)}
-                          class="w-[calc((100%-16px)/3)] h-10 flex items-center justify-center gap-1.5 px-2 rounded-xl text-xs font-semibold transition-all border border-dashed border-warm-primary text-warm-primary bg-warm-card hover:bg-warm-subtle/50 shrink-0 active:scale-95"
-                        >
-                          <Plus class="w-3.5 h-3.5 shrink-0" />
-                          <span class="truncate min-w-0">Tambah</span>
-                        </button>
-                      );
-                    }
-
-                    const cat = item.data;
+                  {(cat) => {
                     const isSelected = () => selectedCategory() === cat.name;
                     return (
                       <button
