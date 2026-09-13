@@ -3,6 +3,7 @@ import { db } from '../services/db';
 import { Expense, ExpenseCategory, CategorySummary } from '../types';
 import { triggerSync, refreshPendingCount } from '../services/sync/syncManager';
 import { categories, getCategoryConfig } from './categoryStore';
+import { settings } from './settingsStore';
 
 // Default bulan saat ini: YYYY-MM
 const getCurrentYearMonth = (): string => {
@@ -201,6 +202,89 @@ export const todayExpensesTotal = createMemo(() => {
   return expenses()
     .filter((item) => item.date === todayStr)
     .reduce((sum, item) => sum + item.amount, 0);
+});
+
+export interface DynamicBudgetCalculation {
+  totalMonthlyIncome: number;
+  spentBeforeToday: number;
+  remainingBalanceBeforeToday: number;
+  daysRemaining: number;
+  totalDaysInMonth: number;
+  currentDay: number;
+  calculatedDailyBudget: number;
+  spentToday: number;
+  remainingToday: number;
+  isOverBudget: boolean;
+  excessAmount: number;
+}
+
+/**
+ * Fungsi kalkulasi murni untuk budget harian dinamis
+ */
+export function calculateDynamicDailyBudget(params: {
+  monthlyIncome: number;
+  expenses: Expense[];
+  now?: Date;
+}): DynamicBudgetCalculation {
+  const now = params.now || new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
+  const currentDay = now.getDate();
+  const totalDaysInMonth = new Date(year, month, 0).getDate();
+
+  // Sisa hari termasuk hari ini (misal tgl 15 di bulan 30 hari -> 16 hari tersisa)
+  const daysRemaining = Math.max(1, totalDaysInMonth - currentDay + 1);
+
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const todayStr = `${year}-${pad(month)}-${pad(currentDay)}`;
+
+  let spentBeforeToday = 0;
+  let spentToday = 0;
+
+  params.expenses.forEach((item) => {
+    if (item.is_deleted) return;
+
+    if (item.date < todayStr || (item.date === todayStr && item.note === 'pengeluaran terakhir')) {
+      spentBeforeToday += item.amount;
+    } else if (item.date === todayStr) {
+      spentToday += item.amount;
+    }
+  });
+
+  const totalMonthlyIncome = params.monthlyIncome || 0;
+  const remainingBalanceBeforeToday = Math.max(0, totalMonthlyIncome - spentBeforeToday);
+
+  const calculatedDailyBudget =
+    daysRemaining > 0 ? Math.round(remainingBalanceBeforeToday / daysRemaining) : 0;
+
+  const remainingToday = calculatedDailyBudget - spentToday;
+  const isOverBudget = spentToday > calculatedDailyBudget;
+  const excessAmount = Math.max(0, spentToday - calculatedDailyBudget);
+
+  return {
+    totalMonthlyIncome,
+    spentBeforeToday,
+    remainingBalanceBeforeToday,
+    daysRemaining,
+    totalDaysInMonth,
+    currentDay,
+    calculatedDailyBudget,
+    spentToday,
+    remainingToday,
+    isOverBudget,
+    excessAmount,
+  };
+}
+
+/**
+ * State reaktif informasi budget harian dinamis
+ */
+export const dynamicDailyBudgetInfo = createMemo<DynamicBudgetCalculation>(() => {
+  const currentIncome = settings().monthlyIncome || 0;
+  return calculateDynamicDailyBudget({
+    monthlyIncome: currentIncome,
+    expenses: expenses(),
+  });
 });
 
 /**

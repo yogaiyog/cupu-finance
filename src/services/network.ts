@@ -1,7 +1,9 @@
 import { createSignal } from 'solid-js';
 import { Network } from '@capacitor/network';
 
-const [isOnline, setIsOnline] = createSignal<boolean>(navigator.onLine);
+const [isOnline, setIsOnline] = createSignal<boolean>(
+  typeof navigator !== 'undefined' ? navigator.onLine : true
+);
 
 type NetworkCallback = (online: boolean) => void;
 const listeners: NetworkCallback[] = [];
