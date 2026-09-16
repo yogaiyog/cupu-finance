@@ -33,4 +33,38 @@ describe('CupuDatabase v2 Categories', () => {
     cats = await db.getAllCategories();
     expect(cats.some(c => c.name === 'Kopi')).toBe(false);
   });
+
+  it('memulihkan transaksi lokal yang amount=0 saat server memiliki amount valid', async () => {
+    // Simulasi data lokal yang sempat rusak menjadi amount: 0
+    await db.saveExpense({
+      id: 'exp_1789536966173_k24m1',
+      date: '2026-09-16',
+      amount: 0,
+      category: 'Makanan',
+      note: 'kopi',
+      updated_at: 1789536966173,
+      is_deleted: false,
+      sync_status: 'synced',
+    });
+
+    const before = await db.expenses.get('exp_1789536966173_k24m1');
+    expect(before?.amount).toBe(0);
+
+    // Merge dari server yang memiliki data benar (20000)
+    await db.mergeServerChanges([
+      {
+        id: 'exp_1789536966173_k24m1',
+        date: '2026-09-16',
+        amount: 20000,
+        category: 'Makanan',
+        note: 'kopi',
+        updated_at: 1789536966173,
+        is_deleted: false,
+        sync_status: 'synced',
+      },
+    ]);
+
+    const after = await db.expenses.get('exp_1789536966173_k24m1');
+    expect(after?.amount).toBe(20000);
+  });
 });

@@ -78,6 +78,88 @@ export function formatRupiah(amount: number): string {
 }
 
 /**
+ * Parsing berbagai format nominal input atau Google Sheets menjadi angka murni (number).
+ * Mendukung: angka murni, "Rp 20.000", "20rb", "20k", "20ribu", "1.5jt", "20.000", dll.
+ */
+export function parseAmount(val: any): number {
+  if (val === null || val === undefined) return 0;
+  if (typeof val === 'number') {
+    return isNaN(val) ? 0 : Math.round(val);
+  }
+
+  let str = String(val).trim();
+  if (!str) return 0;
+
+  // Bersihkan prefix mata uang seperti "Rp", "Rp.", "IDR", "$", dan spasi awal
+  str = str.replace(/^(rp\.?|idr|\$)\s*/i, '').trim();
+
+  // Cek apakah ada suffix "jt", "juta", "m"
+  const jtMatch = str.match(/^([0-9]+(?:[.,][0-9]+)?)\s*(?:jt|juta|m)$/i);
+  if (jtMatch) {
+    const num = parseFloat(jtMatch[1].replace(',', '.'));
+    return isNaN(num) ? 0 : Math.round(num * 1000000);
+  }
+
+  // Cek apakah ada suffix "rb", "ribu", "k"
+  const rbMatch = str.match(/^([0-9]+(?:[.,][0-9]+)?)\s*(?:rb|ribu|k)$/i);
+  if (rbMatch) {
+    const num = parseFloat(rbMatch[1].replace(',', '.'));
+    return isNaN(num) ? 0 : Math.round(num * 1000);
+  }
+
+  // Tangani titik & koma ribuan vs desimal
+  if (str.includes('.') && str.includes(',')) {
+    if (str.lastIndexOf(',') > str.lastIndexOf('.')) {
+      // Format Indonesia: 20.000,50 -> buang titik, jadikan koma sebagai titik desimal
+      str = str.replace(/\./g, '').replace(',', '.');
+    } else {
+      // Format US: 20,000.50 -> buang koma
+      str = str.replace(/,/g, '');
+    }
+  } else if (str.includes('.')) {
+    const parts = str.split('.');
+    if (parts.length > 2 || (parts.length === 2 && parts[1].length === 3)) {
+      str = str.replace(/\./g, '');
+    }
+  } else if (str.includes(',')) {
+    const parts = str.split(',');
+    if (parts.length > 2 || (parts.length === 2 && parts[1].length === 3)) {
+      str = str.replace(/,/g, '');
+    } else {
+      str = str.replace(',', '.');
+    }
+  }
+
+  const cleaned = str.replace(/[^0-9.]/g, '');
+  const parsed = parseFloat(cleaned);
+  return isNaN(parsed) ? 0 : Math.round(parsed);
+}
+
+/**
+ * Parsing tanggal dari Google Sheet, mendukung string 'YYYY-MM-DD' maupun serial number Google Sheets (misal 46235 -> 2026-08-01)
+ */
+export function parseSheetDate(val: any): string {
+  if (!val) return new Date().toISOString().split('T')[0];
+  if (typeof val === 'number' || /^\d{5}$/.test(String(val).trim())) {
+    const serial = Number(val);
+    const utcDays = Math.floor(serial - 25569);
+    const utcValue = utcDays * 86400;
+    const dateInfo = new Date(utcValue * 1000);
+    return dateInfo.toISOString().split('T')[0];
+  }
+  const str = String(val).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+  const d = new Date(str);
+  if (!isNaN(d.getTime())) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+  return str;
+}
+
+/**
  * Muat transaksi untuk bulan yang sedang dipilih
  */
 export async function loadExpensesForSelectedMonth(): Promise<void> {

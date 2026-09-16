@@ -160,8 +160,12 @@ export class CupuDatabase extends Dexie {
             sync_status: 'synced',
           });
         } else {
-          // Resolusi konflik: data dengan updated_at lebih baru menang
-          if (serverItem.updated_at >= local.updated_at) {
+          // Resolusi konflik: data dengan updated_at lebih baru menang,
+          // atau pulihkan jika data lokal nominalnya 0 padahal di server ada nominalnya
+          if (
+            serverItem.updated_at >= local.updated_at ||
+            ((!local.amount || local.amount === 0) && serverItem.amount > 0)
+          ) {
             await this.expenses.put({
               ...serverItem,
               sync_status: 'synced',

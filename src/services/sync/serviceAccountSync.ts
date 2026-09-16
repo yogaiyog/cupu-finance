@@ -1,5 +1,6 @@
 import { Expense } from '../../types';
 import { settings } from '../../stores/settingsStore';
+import { parseAmount, parseSheetDate } from '../../stores/expenseStore';
 import { SyncProvider, SyncResult } from './types';
 import { db } from '../db';
 
@@ -1001,7 +1002,7 @@ export class ServiceAccountSyncProvider implements SyncProvider {
         console.warn('Gagal memeriksa/menyiapkan sheet statistik saat sync:', err);
       }
 
-      const readUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Expenses!A:G`;
+      const readUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Expenses!A:G?valueRenderOption=UNFORMATTED_VALUE`;
       const readRes = await fetch(readUrl, { headers: authHeaders });
 
       if (readRes.status === 403) {
@@ -1070,16 +1071,29 @@ export class ServiceAccountSyncProvider implements SyncProvider {
       const updatedRows: any[][] = reReadData.values || [];
       const serverChanges: Expense[] = [];
 
+      // Kumpulkan ID item lokal yang nominalnya 0 atau kosong agar bisa dipulihkan otomatis dari Sheet
+      const zeroAmountLocalIds = new Set<string>();
+      try {
+        const allLocal = await db.expenses.toArray();
+        for (const loc of allLocal) {
+          if (!loc.amount || loc.amount === 0) {
+            zeroAmountLocalIds.add(loc.id);
+          }
+        }
+      } catch {}
+
       for (let i = 1; i < updatedRows.length; i++) {
         const row = updatedRows[i];
         if (!row || !row[0]) continue;
+        const rowId = String(row[0]);
         const rowUpdatedAt = Number(row[5]) || 0;
+        const parsedAmt = parseAmount(row[2]);
 
-        if (rowUpdatedAt > lastSyncTimestamp) {
+        if (rowUpdatedAt > lastSyncTimestamp || (zeroAmountLocalIds.has(rowId) && parsedAmt > 0)) {
           serverChanges.push({
-            id: String(row[0]),
-            date: String(row[1]),
-            amount: Number(row[2]) || 0,
+            id: rowId,
+            date: parseSheetDate(row[1]),
+            amount: parsedAmt,
             category: (row[3] || 'Lainnya') as any,
             note: String(row[4] || ''),
             updated_at: rowUpdatedAt,

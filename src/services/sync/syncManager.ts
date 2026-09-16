@@ -57,7 +57,7 @@ export async function triggerSync(force = false): Promise<{ success: boolean; me
     setSyncMessage('Sedang menyinkronkan data...');
 
     const pendingItems = await db.getPendingExpenses();
-    const lastSyncTime = settings().lastSyncTimestamp;
+    const lastSyncTime = force ? 0 : settings().lastSyncTimestamp;
 
     // 1. Eksekusi sync ke provider
     const result = await provider.sync(pendingItems, lastSyncTime);

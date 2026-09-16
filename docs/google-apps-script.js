@@ -112,7 +112,7 @@ function doPost(e) {
         serverChanges.push({
           id: String(row[0]),
           date: String(row[1]),
-          amount: Number(row[2]),
+          amount: parseAmount(row[2]),
           category: String(row[3]),
           note: String(row[4]),
           updated_at: rowUpdatedAt,
@@ -241,3 +241,52 @@ function ensureStatistikSheet(ss) {
     // Abaikan agar tidak memblokir sinkronisasi utama
   }
 }
+
+function parseAmount(val) {
+  if (val === null || val === undefined) return 0;
+  if (typeof val === 'number') {
+    return isNaN(val) ? 0 : Math.round(val);
+  }
+
+  var str = String(val).trim();
+  if (!str) return 0;
+
+  str = str.replace(/^(rp\.?|idr|\$)\s*/i, '').trim();
+
+  var jtMatch = str.match(/^([0-9]+(?:[.,][0-9]+)?)\s*(?:jt|juta|m)$/i);
+  if (jtMatch) {
+    var numJt = parseFloat(jtMatch[1].replace(',', '.'));
+    return isNaN(numJt) ? 0 : Math.round(numJt * 1000000);
+  }
+
+  var rbMatch = str.match(/^([0-9]+(?:[.,][0-9]+)?)\s*(?:rb|ribu|k)$/i);
+  if (rbMatch) {
+    var numRb = parseFloat(rbMatch[1].replace(',', '.'));
+    return isNaN(numRb) ? 0 : Math.round(numRb * 1000);
+  }
+
+  if (str.indexOf('.') !== -1 && str.indexOf(',') !== -1) {
+    if (str.lastIndexOf(',') > str.lastIndexOf('.')) {
+      str = str.replace(/\./g, '').replace(',', '.');
+    } else {
+      str = str.replace(/,/g, '');
+    }
+  } else if (str.indexOf('.') !== -1) {
+    var partsDot = str.split('.');
+    if (partsDot.length > 2 || (partsDot.length === 2 && partsDot[1].length === 3)) {
+      str = str.replace(/\./g, '');
+    }
+  } else if (str.indexOf(',') !== -1) {
+    var partsComma = str.split(',');
+    if (partsComma.length > 2 || (partsComma.length === 2 && partsComma[1].length === 3)) {
+      str = str.replace(/,/g, '');
+    } else {
+      str = str.replace(',', '.');
+    }
+  }
+
+  var cleaned = str.replace(/[^0-9.]/g, '');
+  var parsed = parseFloat(cleaned);
+  return isNaN(parsed) ? 0 : Math.round(parsed);
+}
+
