@@ -3,6 +3,8 @@
     "target": "ESNext",
     "useDefineForClassFields": true,
     "module": "ESNext",
+    "incremental": true,
+    "tsBuildInfoFile": "./node_modules/.cache/tsbuildinfo",
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "skipLibCheck": true,
     "moduleResolution": "bundler",

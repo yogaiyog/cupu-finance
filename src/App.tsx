@@ -1,4 +1,4 @@
-import { Component, createSignal, onMount, Switch, Match, Show } from 'solid-js';
+import { Component, createSignal, onMount, Switch, Match, Show, lazy } from 'solid-js';
 import { initSettings, settings, isLoadingSettings } from './stores/settingsStore';
 import { initNetworkListener } from './services/network';
 import { initSyncManager } from './services/sync/syncManager';
@@ -8,12 +8,13 @@ import { Navbar, ActiveTab } from './components/Navbar';
 import { SyncBadge } from './components/SyncBadge';
 import { ExpenseForm } from './components/ExpenseForm';
 import { ExpenseList } from './components/ExpenseList';
-import { MonthlyRecap } from './components/MonthlyRecap';
-import { SettingsView } from './components/SettingsView';
-import { OnboardingView } from './components/OnboardingView';
 import { DailyBudgetCard } from './components/DailyBudgetCard';
 import { DeleteConfirmModal } from './components/DeleteConfirmModal';
 import logoImg from './assets/logo.png';
+
+const MonthlyRecap = lazy(() => import('./components/MonthlyRecap').then((m) => ({ default: m.MonthlyRecap })));
+const SettingsView = lazy(() => import('./components/SettingsView').then((m) => ({ default: m.SettingsView })));
+const OnboardingView = lazy(() => import('./components/OnboardingView').then((m) => ({ default: m.OnboardingView })));
 
 export const App: Component = () => {
   const [activeTab, setActiveTab] = createSignal<ActiveTab>('catat');
