@@ -7,25 +7,14 @@ import {
   setCurrentBalance,
   setDailyBudget,
   setInitialBalance,
-  setServiceAccountConfig,
-  setSpreadsheetId,
 } from '../stores/settingsStore';
-import { serviceAccountSyncProvider } from '../services/sync/serviceAccountSync';
-import { ServiceAccountGuideModal } from './ServiceAccountGuideModal';
 import logoImg from '../assets/logo.png';
 import {
-  FileSpreadsheet,
   ArrowRight,
   ArrowLeft,
-  KeyRound,
-  X,
   CheckCircle2,
-  AlertCircle,
-  RefreshCw,
-  HelpCircle,
   Calendar,
   Sparkles,
-  Upload,
 } from 'lucide-solid';
 
 interface OnboardingViewProps {
@@ -47,41 +36,6 @@ export const OnboardingView: Component<OnboardingViewProps> = (props) => {
       ? new Intl.NumberFormat('id-ID').format(settings().monthlyIncome!)
       : ''
   );
-
-  // Modal Service Account & Guide
-  const [showConnectModal, setShowConnectModal] = createSignal(false);
-  const [showGuideModal, setShowGuideModal] = createSignal(false);
-  const [jsonInput, setJsonInput] = createSignal(settings().serviceAccountJson || '');
-  const [sheetInput, setSheetInput] = createSignal(settings().spreadsheetId || '');
-  const [isConnecting, setIsConnecting] = createSignal(false);
-  const [connectError, setConnectError] = createSignal('');
-  let fileInputRef: HTMLInputElement | undefined;
-
-  const handleFileUpload = (e: Event) => {
-    const target = e.target as HTMLInputElement;
-    const file = target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const content = event.target?.result as string;
-      if (content) {
-        try {
-          const parsed = JSON.parse(content);
-          if (!parsed.client_email || !parsed.private_key) {
-            setConnectError('File JSON tidak valid: harus memiliki "client_email" dan "private_key".');
-            return;
-          }
-          setJsonInput(content);
-          setConnectError('');
-        } catch (err: any) {
-          setConnectError('Gagal membaca file JSON: ' + err.message);
-        }
-      }
-    };
-    reader.readAsText(file);
-    target.value = '';
-  };
 
   // Perhitungan sisa hari bulan ini
   const now = new Date();
@@ -184,73 +138,8 @@ export const OnboardingView: Component<OnboardingViewProps> = (props) => {
     }
   };
 
-  // Hubungkan Google Sheets via Service Account JSON
-  const handleConnectServiceAccount = async () => {
-    if (!jsonInput().trim()) {
-      setConnectError('Harap paste teks JSON Service Account Anda.');
-      return;
-    }
-    if (!sheetInput().trim()) {
-      setConnectError('Harap masukkan Link atau ID Google Sheet Anda.');
-      return;
-    }
-
-    setIsConnecting(true);
-    setConnectError('');
-
-    try {
-      const saveRes = await setServiceAccountConfig(jsonInput().trim(), sheetInput().trim());
-      if (!saveRes.success) {
-        setConnectError(saveRes.error || 'JSON tidak valid.');
-        setIsConnecting(false);
-        return;
-      }
-
-      await setSpreadsheetId(sheetInput().trim());
-
-      const testRes = await serviceAccountSyncProvider.testConnection(
-        jsonInput().trim(),
-        sheetInput().trim()
-      );
-
-      if (testRes.success) {
-        if (nameInput().trim()) {
-          await setUserName(nameInput().trim());
-        }
-        const inc = parsedIncome();
-        const bal = parsedBalance();
-        if (inc > 0) {
-          await setMonthlyIncome(inc);
-        }
-        if (bal > 0) {
-          await setCurrentBalance(bal);
-          await setDailyBudget(dailyBudgetRemaining());
-        }
-
-        const now = new Date();
-        const currentYearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-        await setInitialBalance(bal > 0 ? bal : inc, currentYearMonth);
-
-        await setHasSeenOnboarding(true);
-        setShowConnectModal(false);
-        if (props.onComplete) {
-          props.onComplete();
-        }
-      } else {
-        setConnectError(testRes.message);
-      }
-    } catch (err: any) {
-      setConnectError(err.message || 'Gagal menghubungkan Google Sheet.');
-    } finally {
-      setIsConnecting(false);
-    }
-  };
-
   return (
     <div class="fixed inset-0 z-50 bg-warm-canvas text-warm-ink flex flex-col items-center justify-between p-6 max-w-md mx-auto overflow-y-auto">
-      {/* ========================================================
-          SLIDE 1: LOGO & BRANDING BERSIH
-      ======================================================== */}
       {/* ========================================================
           SLIDE 1: LOGO & BRANDING BERSIH (HANYA LOGO, H1 & H3)
       ======================================================== */}
@@ -289,19 +178,6 @@ export const OnboardingView: Component<OnboardingViewProps> = (props) => {
       ======================================================== */}
       <Show when={currentSlide() === 2}>
         <div class="w-full flex-1 flex flex-col items-center justify-between animate-fadeIn">
-          {/* ATAS: HEADER SLIDE 2 */}
-          {/* <div class="w-full pt-6 text-center">
-            <div class="w-14 h-14 rounded-2xl bg-warm-card border border-warm-border shadow-[0_2px_10px_rgba(213,189,175,0.2)] flex items-center justify-center mx-auto mb-3 text-warm-primary">
-              <Calculator class="w-6 h-6" />
-            </div>
-            <h2 class="text-xl font-bold text-warm-ink tracking-tight mb-1">
-              Kenalan Dulu Yuk
-            </h2>
-            <p class="text-xs text-warm-mute max-w-xs mx-auto leading-relaxed">
-              Biar Cupu Finance bisa bantu hitung batas aman uang yang bisa kamu belanjakan setiap hari.
-            </p>
-          </div> */}
-
           {/* TENGAH: FORM INPUT */}
           <div class="w-full my-auto space-y-4 max-w-sm">
             {/* Input Nama */}
@@ -336,10 +212,8 @@ export const OnboardingView: Component<OnboardingViewProps> = (props) => {
                   class="w-full text-sm font-bold pl-11 pr-3.5 py-3.5 bg-warm-card border border-warm-border rounded-xl text-warm-ink focus:outline-none focus:border-warm-primary placeholder:text-warm-faint shadow-sm"
                 />
               </div>
-              {/* <p class="text-[10px] text-warm-mute mt-1.5 leading-normal">
-                Uang yang kamu alokasikan untuk belanja sampai akhir bulan {currentMonthName}.
-              </p> */}
             </div>
+
             {/* Input Sisa Uang Saat Ini */}
             <div>
               <label class="text-[11px] font-bold text-warm-mute block mb-1.5 uppercase tracking-wider">
@@ -461,22 +335,12 @@ export const OnboardingView: Component<OnboardingViewProps> = (props) => {
 
           {/* BAWAH: AKSI SELESAI */}
           <div class="w-full pb-2 space-y-2">
-            {/* Tombol Masuk Offline */}
             <button
               onClick={handleFinishOnboarding}
               class="w-full h-12 bg-warm-primary hover:bg-warm-primary-dark text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-[0_2px_8px_rgba(213,189,175,0.4)] active:scale-[0.98] transition-all"
             >
               <span>Mulai Catat Transaksi</span>
               <ArrowRight class="w-4 h-4" />
-            </button>
-
-            {/* Tombol Koneksi Google Sheets */}
-            <button
-              onClick={() => setShowConnectModal(true)}
-              class="w-full h-10 bg-warm-card hover:bg-warm-subtle text-warm-ink border border-warm-border rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-sm"
-            >
-              <FileSpreadsheet class="w-4 h-4 text-warm-primary" />
-              <span>Hubungkan Google Sheet (Kunci JSON)</span>
             </button>
           </div>
         </div>
@@ -502,126 +366,6 @@ export const OnboardingView: Component<OnboardingViewProps> = (props) => {
           }`}
         />
       </div>
-
-      {/* ========================================================
-          MODAL INPUT SERVICE ACCOUNT JSON & GOOGLE SHEET
-      ======================================================== */}
-      <Show when={showConnectModal()}>
-        <div class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div class="bg-warm-card border border-warm-border rounded-2xl max-w-sm w-full p-5 shadow-xl max-h-[90vh] overflow-y-auto">
-            <div class="flex items-center justify-between mb-3">
-              <h4 class="text-xs font-bold text-warm-ink flex items-center gap-1.5">
-                <KeyRound class="w-4 h-4 text-warm-primary" />
-                <span>Koneksi Google Sheets via JSON</span>
-              </h4>
-              <button
-                onClick={() => setShowConnectModal(false)}
-                class="p-1 text-warm-mute hover:text-warm-ink rounded-lg"
-              >
-                <X class="w-4 h-4" />
-              </button>
-            </div>
-
-            <p class="text-[11px] text-warm-mute mb-3 leading-relaxed">
-              Paste teks JSON Service Account dari Google Cloud Anda dan link Google Sheet tujuan:
-            </p>
-
-            <div class="space-y-3 mb-4">
-              <div>
-                <div class="flex items-center justify-between mb-1.5">
-                  <label class="text-[10px] font-bold text-warm-mute uppercase tracking-wider">
-                    Isi Kunci JSON Service Account
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setShowGuideModal(true)}
-                    class="text-[10px] text-warm-primary hover:underline font-bold flex items-center gap-1"
-                  >
-                    <HelpCircle class="w-3 h-3" />
-                    <span>Cara Mendapatkannya</span>
-                  </button>
-                </div>
-
-                <div class="mb-2">
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    accept=".json,application/json"
-                    onChange={handleFileUpload}
-                    class="hidden"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef?.click()}
-                    class="w-full py-2 px-3 border border-dashed border-warm-border hover:border-warm-primary bg-warm-subtle/50 hover:bg-warm-subtle rounded-xl text-xs font-semibold text-warm-ink flex items-center justify-center gap-2 transition-colors"
-                  >
-                    <Upload class="w-4 h-4 text-warm-primary" />
-                    <span>Upload File JSON Service Account</span>
-                  </button>
-                </div>
-
-                <textarea
-                  placeholder={'Atau copas isi JSON di sini:\n{\n  "type": "service_account",\n  "client_email": "...",\n  "private_key": "..."\n}'}
-                  value={jsonInput()}
-                  onInput={(e) => setJsonInput(e.currentTarget.value)}
-                  rows={3}
-                  class="w-full text-[11px] p-2.5 bg-warm-subtle border border-warm-border rounded-xl text-warm-ink font-mono focus:outline-none focus:border-warm-primary placeholder:text-warm-faint resize-none"
-                ></textarea>
-              </div>
-
-              <div>
-                <label class="text-[10px] font-bold text-warm-mute uppercase tracking-wider block mb-1">
-                  Link atau ID Google Sheet
-                </label>
-                <input
-                  type="text"
-                  placeholder="https://docs.google.com/spreadsheets/d/..."
-                  value={sheetInput()}
-                  onInput={(e) => setSheetInput(e.currentTarget.value)}
-                  class="w-full text-xs p-2.5 bg-warm-subtle border border-warm-border rounded-xl text-warm-ink focus:outline-none focus:border-warm-primary placeholder:text-warm-faint font-mono"
-                />
-              </div>
-
-              <Show when={connectError()}>
-                <div class="p-2.5 bg-cat-bills-soft text-cat-bills rounded-xl text-[11px] font-medium flex items-start gap-1.5">
-                  <AlertCircle class="w-4 h-4 shrink-0 mt-0.5" />
-                  <span>{connectError()}</span>
-                </div>
-              </Show>
-
-              <div class="p-2.5 bg-warm-subtle/70 border border-warm-border rounded-xl text-[10.5px] text-warm-mute leading-relaxed">
-                <strong>Penting:</strong> Di Google Sheet Anda, klik tombol <strong>Bagikan (Share)</strong> dan tambahkan alamat <code>client_email</code> dari JSON Anda sebagai <strong>Editor</strong>.
-              </div>
-            </div>
-
-            <div class="flex items-center justify-end gap-2">
-              <button
-                onClick={() => setShowConnectModal(false)}
-                disabled={isConnecting()}
-                class="px-3 py-2 text-xs text-warm-mute hover:text-warm-ink font-medium disabled:opacity-50"
-              >
-                Batal
-              </button>
-              <button
-                onClick={handleConnectServiceAccount}
-                disabled={isConnecting()}
-                class="px-4 py-2 bg-warm-primary text-white text-xs font-bold rounded-xl flex items-center gap-1.5 disabled:opacity-50"
-              >
-                <Show when={isConnecting()} fallback={<CheckCircle2 class="w-3.5 h-3.5" />}>
-                  <RefreshCw class="w-3.5 h-3.5 animate-spin" />
-                </Show>
-                <span>{isConnecting() ? 'Menghubungkan...' : 'Koneksikan & Masuk'}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </Show>
-
-      {/* MODAL PANDUAN CARA DAPETIN JSON */}
-      <ServiceAccountGuideModal
-        isOpen={showGuideModal()}
-        onClose={() => setShowGuideModal(false)}
-      />
     </div>
   );
 };
