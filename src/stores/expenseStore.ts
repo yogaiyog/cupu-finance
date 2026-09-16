@@ -72,13 +72,15 @@ export const CATEGORY_CONFIG: Record<
 };
 
 /**
- * Format angka ke Rupiah bersih: "Rp 25.000"
+ * Format angka ke Rupiah bersih: "Rp 25.000" atau "-Rp 10.000" jika minus
  */
 export function formatRupiah(amount: number): string {
-  const formatted = Math.round(amount)
+  const isNegative = amount < 0;
+  const absAmount = Math.abs(Math.round(amount));
+  const formatted = absAmount
     .toString()
     .replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-  return `Rp ${formatted}`;
+  return isNegative ? `-Rp ${formatted}` : `Rp ${formatted}`;
 }
 
 /**

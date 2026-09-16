@@ -157,10 +157,12 @@ export const BudgetDetailModal: Component<BudgetDetailModalProps> = (props) => {
                   </div>
                 </div>
               </div>
-              <strong class="text-sm font-extrabold tabular-nums">
-                {info().isOverBudget
-                  ? `+${formatRupiah(info().excessAmount)}`
-                  : formatRupiah(Math.max(0, info().remainingToday))}
+              <strong
+                class={`text-sm font-extrabold tabular-nums ${
+                  info().isOverBudget ? 'text-cat-bills' : 'text-warm-ink'
+                }`}
+              >
+                {formatRupiah(info().remainingToday)}
               </strong>
             </div>
 
