@@ -6,7 +6,7 @@ import { categories, getCategoryConfig } from './categoryStore';
 import { settings } from './settingsStore';
 
 // Default bulan saat ini: YYYY-MM
-const getCurrentYearMonth = (): string => {
+export const getCurrentYearMonth = (): string => {
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -14,8 +14,12 @@ const getCurrentYearMonth = (): string => {
 };
 
 // State Signals
+// selectedMonth: bulan yang sedang aktif dilihat di tab Rekap
 const [selectedMonth, setSelectedMonth] = createSignal<string>(getCurrentYearMonth());
-const [expenses, setExpenses] = createSignal<Expense[]>([]);
+// currentMonthExpenses: transaksi di bulan berjalan (selalu sinkron untuk tab Catat & Daily Budget)
+const [currentMonthExpenses, setCurrentMonthExpenses] = createSignal<Expense[]>([]);
+// recapExpenses: transaksi khusus bulan yang dipilih di tab Rekap
+const [recapExpenses, setRecapExpenses] = createSignal<Expense[]>([]);
 const [isLoadingExpenses, setIsLoadingExpenses] = createSignal<boolean>(false);
 
 // Konfigurasi Kategori & Warna Soft (Warmgrey)
@@ -160,13 +164,25 @@ export function parseSheetDate(val: any): string {
 }
 
 /**
- * Muat transaksi untuk bulan yang sedang dipilih
+ * Muat transaksi untuk bulan berjalan dan bulan yang sedang dipilih
  */
 export async function loadExpensesForSelectedMonth(): Promise<void> {
   setIsLoadingExpenses(true);
   try {
-    const items = await db.getExpensesForMonth(selectedMonth());
-    setExpenses(items);
+    const currentYM = getCurrentYearMonth();
+    const selYM = selectedMonth();
+
+    // 1. Selalu muat data bulan berjalan (untuk Tab Catat & Daily Budget)
+    const currentItems = await db.getExpensesForMonth(currentYM);
+    setCurrentMonthExpenses(currentItems);
+
+    // 2. Muat data bulan rekap yang dipilih
+    if (selYM === currentYM) {
+      setRecapExpenses(currentItems);
+    } else {
+      const recapItems = await db.getExpensesForMonth(selYM);
+      setRecapExpenses(recapItems);
+    }
   } catch (error) {
     console.error('Gagal memuat transaksi:', error);
   } finally {
@@ -199,9 +215,23 @@ export async function addExpense(params: {
 
   await db.saveExpense(newExpense);
 
-  // Jika tanggal transaksi berada di bulan yang sedang aktif dilihat, update state
-  if (expenseDate.startsWith(selectedMonth())) {
-    await loadExpensesForSelectedMonth();
+  const currentYM = getCurrentYearMonth();
+  const selYM = selectedMonth();
+
+  // Selalu perbarui state bulan berjalan jika transaksi terjadi di bulan ini
+  if (expenseDate.startsWith(currentYM)) {
+    const currentItems = await db.getExpensesForMonth(currentYM);
+    setCurrentMonthExpenses(currentItems);
+  }
+
+  // Jika transaksi juga berada di bulan yang sedang dilihat di tab rekap, perbarui juga
+  if (expenseDate.startsWith(selYM)) {
+    if (selYM === currentYM) {
+      setRecapExpenses(currentMonthExpenses());
+    } else {
+      const recapItems = await db.getExpensesForMonth(selYM);
+      setRecapExpenses(recapItems);
+    }
   }
 
   await refreshPendingCount();
@@ -260,7 +290,7 @@ export async function confirmDeleteExpense(): Promise<void> {
 export { expenseToDelete };
 
 /**
- * Berpindah bulan (+1 atau -1)
+ * Berpindah bulan (+1 atau -1) khusus untuk tab Rekap
  */
 export async function changeMonth(deltaMonths: number): Promise<void> {
   const [yearStr, monthStr] = selectedMonth().split('-');
@@ -277,7 +307,23 @@ export async function changeMonth(deltaMonths: number): Promise<void> {
 
   const nextMonth = `${year}-${String(month).padStart(2, '0')}`;
   setSelectedMonth(nextMonth);
-  await loadExpensesForSelectedMonth();
+
+  setIsLoadingExpenses(true);
+  try {
+    const currentYM = getCurrentYearMonth();
+    if (nextMonth === currentYM) {
+      const items = await db.getExpensesForMonth(nextMonth);
+      setRecapExpenses(items);
+      setCurrentMonthExpenses(items);
+    } else {
+      const items = await db.getExpensesForMonth(nextMonth);
+      setRecapExpenses(items);
+    }
+  } catch (error) {
+    console.error('Gagal memuat transaksi rekap:', error);
+  } finally {
+    setIsLoadingExpenses(false);
+  }
 }
 
 // DERIVED MEMOS
@@ -287,7 +333,7 @@ export async function changeMonth(deltaMonths: number): Promise<void> {
  */
 export const todayExpensesTotal = createMemo(() => {
   const todayStr = new Date().toISOString().split('T')[0];
-  return expenses()
+  return currentMonthExpenses()
     .filter((item) => item.date === todayStr)
     .reduce((sum, item) => sum + item.amount, 0);
 });
@@ -392,7 +438,7 @@ export function calculateDynamicDailyBudget(params: {
 }
 
 /**
- * State reaktif informasi budget harian dinamis
+ * State reaktif informasi budget harian dinamis (selalu menggunakan data bulan berjalan)
  */
 export const dynamicDailyBudgetInfo = createMemo<DynamicBudgetCalculation>(() => {
   const currentIncome = settings().monthlyIncome || 0;
@@ -400,21 +446,21 @@ export const dynamicDailyBudgetInfo = createMemo<DynamicBudgetCalculation>(() =>
   const initMonth = settings().initialBalanceMonth;
   return calculateDynamicDailyBudget({
     monthlyIncome: currentIncome,
-    expenses: expenses(),
+    expenses: currentMonthExpenses(),
     initialBalance: initBal,
     initialBalanceMonth: initMonth,
   });
 });
 
 /**
- * Total pengeluaran bulan berjalan
+ * Total pengeluaran bulan yang dipilih di tab Rekap
  */
 export const totalMonthlyExpense = createMemo(() => {
-  return expenses().reduce((sum, item) => sum + item.amount, 0);
+  return recapExpenses().reduce((sum, item) => sum + item.amount, 0);
 });
 
 /**
- * Rata-rata pengeluaran per hari
+ * Rata-rata pengeluaran per hari untuk bulan rekap
  */
 export const dailyAverageExpense = createMemo(() => {
   const total = totalMonthlyExpense();
@@ -433,10 +479,10 @@ export const dailyAverageExpense = createMemo(() => {
 });
 
 /**
- * Ringkasan breakdown per kategori
+ * Ringkasan breakdown per kategori untuk bulan rekap
  */
 export const categoryBreakdown = createMemo<CategorySummary[]>(() => {
-  const items = expenses();
+  const items = recapExpenses();
   const total = totalMonthlyExpense();
   const categoryMap: Record<string, number> = {};
 
@@ -471,7 +517,7 @@ export const categoryBreakdown = createMemo<CategorySummary[]>(() => {
 });
 
 /**
- * Daftar transaksi yang dikelompokkan per tanggal
+ * Daftar transaksi yang dikelompokkan per tanggal (khusus tab Rekap)
  */
 export interface DateGroupedExpense {
   date: string;
@@ -481,7 +527,7 @@ export interface DateGroupedExpense {
 }
 
 export const groupedExpenses = createMemo<DateGroupedExpense[]>(() => {
-  const items = expenses();
+  const items = recapExpenses();
   const groups: Record<string, Expense[]> = {};
 
   items.forEach((item) => {
@@ -523,4 +569,32 @@ export const groupedExpenses = createMemo<DateGroupedExpense[]>(() => {
     });
 });
 
-export { selectedMonth, expenses, isLoadingExpenses };
+/**
+ * Daftar transaksi khusus hari ini (untuk tab Catat)
+ */
+export const todayGroupedExpenses = createMemo<DateGroupedExpense[]>(() => {
+  const todayStr = new Date().toISOString().split('T')[0];
+  const items = currentMonthExpenses().filter((item) => item.date === todayStr);
+  if (items.length === 0) return [];
+
+  const totalDay = items.reduce((acc, curr) => acc + curr.amount, 0);
+  return [
+    {
+      date: todayStr,
+      formattedDate: 'Hari ini',
+      totalDay,
+      items,
+    },
+  ];
+});
+
+// Backward compatibility alias
+const expenses = recapExpenses;
+
+export {
+  selectedMonth,
+  expenses,
+  currentMonthExpenses,
+  recapExpenses,
+  isLoadingExpenses,
+};

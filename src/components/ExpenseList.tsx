@@ -1,5 +1,10 @@
 import { Component, For, Show } from 'solid-js';
-import { groupedExpenses, formatRupiah, isLoadingExpenses } from '../stores/expenseStore';
+import {
+  groupedExpenses,
+  todayGroupedExpenses,
+  formatRupiah,
+  isLoadingExpenses,
+} from '../stores/expenseStore';
 import { ExpenseItem } from './ExpenseItem';
 
 interface ExpenseListProps {
@@ -8,12 +13,10 @@ interface ExpenseListProps {
 
 export const ExpenseList: Component<ExpenseListProps> = (props) => {
   const displayGroups = () => {
-    const all = groupedExpenses();
     if (props.todayOnly) {
-      const todayStr = new Date().toISOString().split('T')[0];
-      return all.filter((g) => g.date === todayStr);
+      return todayGroupedExpenses();
     }
-    return all;
+    return groupedExpenses();
   };
 
   return (
